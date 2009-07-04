@@ -1,5 +1,9 @@
 package App::Termcast;
 use Moose;
+use IO::Pty::Easy;
+use IO::Socket::INET;
+use Term::ReadKey;
+with 'MooseX::Getopt';
 
 =head1 NAME
 
@@ -12,6 +16,65 @@ App::Termcast -
 
 
 =cut
+
+has host => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'noway.ratry.ru',
+);
+
+has port => (
+    is      => 'rw',
+    isa     => 'Int',
+    default => 31337,
+);
+
+has user => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => sub { $ENV{USER} },
+);
+
+has password => (
+    is      => 'rw',
+    isa     => 'Str',
+    default => 'asdf', # really unimportant
+);
+
+sub run {
+    my $self = shift;
+    my @argv = @{ $self->extra_argv };
+    push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
+
+    ReadMode 3;
+
+    my $socket = IO::Socket::INET->new(PeerAddr => $self->host,
+                                       PeerPort => $self->port);
+    $socket->write('hello '.$self->user.' '.$self->password."\n");
+
+    my $pty = IO::Pty::Easy->new;
+    $pty->spawn(@argv);
+
+    my ($rin, $rout) = '';
+    vec($rin, fileno(STDIN) ,1) = 1;
+    vec($rin, fileno($pty->{pty}), 1) = 1;
+    while (1) {
+        my $ready = select($rout = $rin, undef, undef, undef);
+        if (vec($rout, fileno(STDIN), 1)) {
+            my $buf;
+            sysread STDIN, $buf, 4096;
+            $pty->write($buf);
+        }
+        if (vec($rout, fileno($pty->{pty}), 1)) {
+            my $buf = $pty->read(0);
+            syswrite STDOUT, $buf;
+            $socket->write($buf);
+        }
+    }
+    if ($!) {
+        warn "Error reading: $!\n";
+    }
+}
 
 __PACKAGE__->meta->make_immutable;
 no Moose;
