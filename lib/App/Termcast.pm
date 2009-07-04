@@ -63,16 +63,21 @@ sub run {
         if (vec($rout, fileno(STDIN), 1)) {
             my $buf;
             sysread STDIN, $buf, 4096;
+            if (!$buf) {
+                warn "Error reading from stdin: $!" unless defined $buf;
+                last;
+            }
             $pty->write($buf);
         }
         if (vec($rout, fileno($pty->{pty}), 1)) {
             my $buf = $pty->read(0);
+            if (!$buf) {
+                warn "Error reading from pty: $!" unless defined $buf;
+                last;
+            }
             syswrite STDOUT, $buf;
             $socket->write($buf);
         }
-    }
-    if ($!) {
-        warn "Error reading: $!\n";
     }
 }
 
