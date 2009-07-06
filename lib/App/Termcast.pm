@@ -46,8 +46,6 @@ sub run {
     my @argv = @{ $self->extra_argv };
     push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
 
-    ReadMode 3;
-
     my $socket = IO::Socket::INET->new(PeerAddr => $self->host,
                                        PeerPort => $self->port);
     $socket->write('hello '.$self->user.' '.$self->password."\n");
@@ -58,6 +56,7 @@ sub run {
     my ($rin, $rout) = '';
     vec($rin, fileno(STDIN) ,1) = 1;
     vec($rin, fileno($pty->{pty}), 1) = 1;
+    ReadMode 4;
     while (1) {
         my $ready = select($rout = $rin, undef, undef, undef);
         if (vec($rout, fileno(STDIN), 1)) {
@@ -79,6 +78,7 @@ sub run {
             $socket->write($buf);
         }
     }
+    ReadMode 0;
 }
 
 __PACKAGE__->meta->make_immutable;
