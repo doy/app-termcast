@@ -7,7 +7,7 @@ with 'MooseX::Getopt';
 
 =head1 NAME
 
-App::Termcast -
+App::Termcast - broadcast your terminal sessions for remote viewing
 
 =head1 SYNOPSIS
 
