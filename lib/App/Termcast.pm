@@ -50,14 +50,9 @@ sub run {
                                        PeerPort => $self->port);
     $socket->write('hello '.$self->user.' '.$self->password."\n");
 
-    my $pty = IO::Pty::Easy->new;
+    my $pty = IO::Pty::Easy->new(raw => 0);
     $pty->spawn(@argv);
     my $ptyfd = fileno($pty);
-    my $termios = POSIX::Termios->new;
-    $termios->getattr($ptyfd);
-    my $lflag = $termios->getlflag;
-    $termios->setlflag($lflag | POSIX::ECHO);
-    $termios->setattr($ptyfd, POSIX::TCSANOW);
 
     my ($rin, $rout) = '';
     vec($rin, fileno(STDIN) ,1) = 1;
