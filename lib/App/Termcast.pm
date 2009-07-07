@@ -52,15 +52,16 @@ sub run {
 
     my $pty = IO::Pty::Easy->new;
     $pty->spawn(@argv);
+    my $ptyfd = fileno($pty);
     my $termios = POSIX::Termios->new;
-    $termios->getattr(fileno($pty));
+    $termios->getattr($ptyfd);
     my $lflag = $termios->getlflag;
     $termios->setlflag($lflag | POSIX::ECHO);
-    $termios->setattr(fileno($pty), POSIX::TCSANOW);
+    $termios->setattr($ptyfd, POSIX::TCSANOW);
 
     my ($rin, $rout) = '';
     vec($rin, fileno(STDIN) ,1) = 1;
-    vec($rin, fileno($pty), 1) = 1;
+    vec($rin, $ptyfd, 1) = 1;
     ReadMode 4;
     while (1) {
         my $ready = select($rout = $rin, undef, undef, undef);
@@ -73,7 +74,7 @@ sub run {
             }
             $pty->write($buf);
         }
-        if (vec($rout, fileno($pty), 1)) {
+        if (vec($rout, $ptyfd, 1)) {
             my $buf = $pty->read(0);
             if (!$buf) {
                 warn "Error reading from pty: $!" unless defined $buf;
