@@ -52,6 +52,11 @@ sub run {
 
     my $pty = IO::Pty::Easy->new;
     $pty->spawn(@argv);
+    my $termios = POSIX::Termios->new;
+    $termios->getattr(fileno($pty->{pty}));
+    my $lflag = $termios->getlflag;
+    $termios->setlflag($lflag | POSIX::ECHO);
+    $termios->setattr(fileno($pty->{pty}), POSIX::TCSANOW);
 
     my ($rin, $rout) = '';
     vec($rin, fileno(STDIN) ,1) = 1;
