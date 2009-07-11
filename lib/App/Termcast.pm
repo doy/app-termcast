@@ -65,7 +65,7 @@ sub run {
     my ($rin, $rout) = '';
     vec($rin, fileno(STDIN) ,1) = 1;
     vec($rin, $ptyfd, 1) = 1;
-    ReadMode 4;
+    ReadMode 5;
     while (1) {
         my $ready = select($rout = $rin, undef, undef, undef);
         if (vec($rout, fileno(STDIN), 1)) {
