@@ -11,9 +11,13 @@ App::Termcast - broadcast your terminal sessions for remote viewing
 
 =head1 SYNOPSIS
 
+  termcast [options] [command]
 
 =head1 DESCRIPTION
 
+App::Termcast is a client for the L<http://termcast.org/> service, which allows
+broadcasting of a terminal session for remote viewing. It will either run a
+command given on the command line, or a shell.
 
 =cut
 
