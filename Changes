@@ -1,5 +1,8 @@
 Revision history for App::Termcast
 
+0.01     07/11/2009
+    A few more bug fixes, and actual tests
+
 0.01_02  07/10/2009
     A few bug fixes
 
