@@ -21,24 +21,28 @@ has host => (
     is      => 'rw',
     isa     => 'Str',
     default => 'noway.ratry.ru',
+    documentation => 'Hostname of the termcast server to connect to',
 );
 
 has port => (
     is      => 'rw',
     isa     => 'Int',
     default => 31337,
+    documentation => 'Port to connect to on the termcast server',
 );
 
 has user => (
     is      => 'rw',
     isa     => 'Str',
     default => sub { $ENV{USER} },
+    documentation => 'Username for the termcast server',
 );
 
 has password => (
     is      => 'rw',
     isa     => 'Str',
     default => 'asdf', # really unimportant
+    documentation => 'Password for the termcast server (mostly unimportant)',
 );
 
 sub run {
