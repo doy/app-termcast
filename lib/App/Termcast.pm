@@ -106,11 +106,11 @@ no Moose;
 
 =head1 TODO
 
-Tests! Need to figure out a good way to test this.
-
 Factor some stuff out so applications can call this standalone?
 
 Use L<MooseX::SimpleConfig> to make configuration easier.
+
+Do something about the watcher notifications that the termcast server sends.
 
 =head1 BUGS
 
