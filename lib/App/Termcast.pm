@@ -93,6 +93,14 @@ sub run {
 __PACKAGE__->meta->make_immutable;
 no Moose;
 
+=head1 TODO
+
+Tests! Need to figure out a good way to test this.
+
+Factor some stuff out so applications can call this standalone?
+
+Use L<MooseX::SimpleConfig> to make configuration easier.
+
 =head1 BUGS
 
 No known bugs.
