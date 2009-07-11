@@ -1,4 +1,29 @@
 #!/usr/bin/env perl
 use App::Termcast;
 
+=head1 NAME
+
+termcast - broadcast your terminal sessions for remote viewing
+
+=head1 SYNOPSIS
+
+  termcast [options] [command]
+
+=head1 DESCRIPTION
+
+See L<App::Termcast> for documentation.
+
+=cut
+
 App::Termcast->new_with_options->run;
+
+=head1 AUTHOR
+
+  Jesse Luehrs <doy at tozt dot net>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2009 by Jesse Luehrs.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as perl itself.
