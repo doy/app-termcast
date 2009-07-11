@@ -71,7 +71,7 @@ sub run {
         if (vec($rout, fileno(STDIN), 1)) {
             my $buf;
             sysread STDIN, $buf, 4096;
-            if (!$buf) {
+            if (!defined $buf || length $buf == 0) {
                 warn "Error reading from stdin: $!" unless defined $buf;
                 last;
             }
@@ -79,7 +79,7 @@ sub run {
         }
         if (vec($rout, $ptyfd, 1)) {
             my $buf = $pty->read(0);
-            if (!$buf) {
+            if (!defined $buf || length $buf == 0) {
                 warn "Error reading from pty: $!" unless defined $buf;
                 last;
             }
