@@ -46,7 +46,9 @@ has password => (
     is      => 'rw',
     isa     => 'Str',
     default => 'asdf', # really unimportant
-    documentation => 'Password for the termcast server (mostly unimportant)',
+    documentation => "Password for the termcast server\n"
+                   . "                              (mostly unimportant)",
+);
 
 has bell_on_watcher => (
     is      => 'rw',
