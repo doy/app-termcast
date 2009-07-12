@@ -3,7 +3,7 @@ use Moose;
 use IO::Pty::Easy;
 use IO::Socket::INET;
 use Term::ReadKey;
-with 'MooseX::Getopt';
+with 'MooseX::Getopt::Dashes';
 
 =head1 NAME
 
@@ -47,6 +47,13 @@ has password => (
     isa     => 'Str',
     default => 'asdf', # really unimportant
     documentation => 'Password for the termcast server (mostly unimportant)',
+
+has bell_on_watcher => (
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    documentation => "Send a terminal bell when a watcher connects\n"
+                   . "                              or disconnects",
 );
 
 sub run {
@@ -95,7 +102,10 @@ sub run {
                 warn "Error reading from socket: $!" unless defined $buf;
                 last;
             }
-            # XXX: do something with this? (watcher notification, etc)
+            if ($self->bell_on_watcher) {
+                # something better to do here?
+                syswrite STDOUT, "\a";
+            }
         }
     }
     ReadMode 0;
