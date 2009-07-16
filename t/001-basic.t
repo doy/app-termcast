@@ -17,7 +17,7 @@ test_tcp(
         use App::Termcast;
         my \$tc = App::Termcast->new(host => '127.0.0.1', port => $port,
                                     user => 'test', password => 'tset',
-                                    extra_argv => ["$^X", "-e", "print 'foo'"]);
+                                    extra_argv => ['$^X', "-e", "print 'foo'"]);
         \$tc->run;
 EOF
         my $pty = IO::Pty::Easy->new;
