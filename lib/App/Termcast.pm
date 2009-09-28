@@ -2,6 +2,7 @@ package App::Termcast;
 use Moose;
 use IO::Pty::Easy;
 use IO::Socket::INET;
+use Scope::Guard;
 use Term::ReadKey;
 with 'MooseX::Getopt::Dashes';
 
@@ -85,6 +86,7 @@ sub run {
     vec($rin, $ptyfd, 1) = 1;
     vec($rin, $sockfd, 1) = 1;
     ReadMode 5;
+    my $guard = Scope::Guard->new(sub { ReadMode 0 });
     local $SIG{WINCH} = sub { $self->_got_winch(1) };
     while (1) {
         my $ready = select($rout = $rin, undef, undef, undef);
@@ -96,7 +98,8 @@ sub run {
                     $self->_got_winch(0);
                     redo;
                 }
-                warn "Error reading from stdin: $!" unless defined $buf;
+                Carp::croak("Error reading from stdin: $!")
+                    unless defined $buf;
                 last;
             }
             $pty->write($buf);
@@ -108,7 +111,8 @@ sub run {
                     $self->_got_winch(0);
                     redo;
                 }
-                warn "Error reading from pty: $!" unless defined $buf;
+                Carp::croak("Error reading from pty: $!")
+                    unless defined $buf;
                 last;
             }
             syswrite STDOUT, $buf;
@@ -122,7 +126,8 @@ sub run {
                     $self->_got_winch(0);
                     redo;
                 }
-                warn "Error reading from socket: $!" unless defined $buf;
+                Carp::croak("Error reading from socket: $!")
+                    unless defined $buf;
                 last;
             }
             if ($self->bell_on_watcher) {
@@ -131,7 +136,6 @@ sub run {
             }
         }
     }
-    ReadMode 0;
 }
 
 __PACKAGE__->meta->make_immutable;
