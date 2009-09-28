@@ -1,5 +1,13 @@
 Revision history for App::Termcast
 
+0.02     09/27/2009
+    Add new option --bell-on-watcher to send a bell to your terminal whenever
+    a watcher connects
+
+    Stop dying when the terminal is resized
+
+    Use Scope::Guard to better clean up ReadMode when we're done
+
 0.01     07/11/2009
     A few more bug fixes, and actual tests
 
