@@ -58,6 +58,14 @@ has bell_on_watcher => (
                    . "                              or disconnects",
 );
 
+has _got_winch => (
+    traits   => ['NoGetopt'],
+    is       => 'rw',
+    isa      => 'Bool',
+    default  => 0,
+    init_arg => undef,
+);
+
 sub run {
     my $self = shift;
     my @argv = @{ $self->extra_argv };
@@ -77,12 +85,17 @@ sub run {
     vec($rin, $ptyfd, 1) = 1;
     vec($rin, $sockfd, 1) = 1;
     ReadMode 5;
+    local $SIG{WINCH} = sub { $self->_got_winch(1) };
     while (1) {
         my $ready = select($rout = $rin, undef, undef, undef);
         if (vec($rout, fileno(STDIN), 1)) {
             my $buf;
             sysread STDIN, $buf, 4096;
             if (!defined $buf || length $buf == 0) {
+                if ($self->_got_winch) {
+                    $self->_got_winch(0);
+                    redo;
+                }
                 warn "Error reading from stdin: $!" unless defined $buf;
                 last;
             }
@@ -91,6 +104,10 @@ sub run {
         if (vec($rout, $ptyfd, 1)) {
             my $buf = $pty->read(0);
             if (!defined $buf || length $buf == 0) {
+                if ($self->_got_winch) {
+                    $self->_got_winch(0);
+                    redo;
+                }
                 warn "Error reading from pty: $!" unless defined $buf;
                 last;
             }
@@ -101,6 +118,10 @@ sub run {
             my $buf;
             $socket->recv($buf, 4096);
             if (!defined $buf || length $buf == 0) {
+                if ($self->_got_winch) {
+                    $self->_got_winch(0);
+                    redo;
+                }
                 warn "Error reading from socket: $!" unless defined $buf;
                 last;
             }
