@@ -59,6 +59,13 @@ has bell_on_watcher => (
                    . "                              or disconnects",
 );
 
+has timeout => (
+    is      => 'rw',
+    isa     => 'Int',
+    default => 5,
+    documentation => "Timeout length for the connection to the termcast server",
+);
+
 has _got_winch => (
     traits   => ['NoGetopt'],
     is       => 'rw',
@@ -67,14 +74,20 @@ has _got_winch => (
     init_arg => undef,
 );
 
+sub connect {
+    my $self = shift;
+    my $socket = IO::Socket::INET->new(PeerAddr => $self->host,
+                                       PeerPort => $self->port);
+    $socket->write('hello '.$self->user.' '.$self->password."\n");
+    return $socket;
+}
+
 sub run {
     my $self = shift;
     my @argv = @{ $self->extra_argv };
     push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
 
-    my $socket = IO::Socket::INET->new(PeerAddr => $self->host,
-                                       PeerPort => $self->port);
-    $socket->write('hello '.$self->user.' '.$self->password."\n");
+    my $socket = $self->connect;
     my $sockfd = fileno($socket);
 
     my $pty = IO::Pty::Easy->new(raw => 0);
@@ -85,6 +98,8 @@ sub run {
     vec($rin, fileno(STDIN) ,1) = 1;
     vec($rin, $ptyfd, 1) = 1;
     vec($rin, $sockfd, 1) = 1;
+    my ($win, $wout) = '';
+    vec($win, $sockfd, 1) = 1;
     ReadMode 5;
     my $guard = Scope::Guard->new(sub { ReadMode 0 });
     local $SIG{WINCH} = sub { $self->_got_winch(1) };
@@ -116,6 +131,14 @@ sub run {
                 last;
             }
             syswrite STDOUT, $buf;
+            my $ready = select(undef, $wout = $win, undef, $self->timeout);
+            if (!$ready) {
+                Carp::carp("Lost connection to server ($!), reconnecting...");
+                $socket = $self->connect;
+                vec($rin, $sockfd, 1) = 0;
+                $sockfd = fileno($socket);
+                vec($rin, $sockfd, 1) = 1;
+            }
             $socket->write($buf);
         }
         if (vec($rout, $sockfd, 1)) {
