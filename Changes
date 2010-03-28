@@ -1,5 +1,8 @@
 Revision history for App::Termcast
 
+0.03     03/27/2010
+    Reconnect to the termcast server if the connection is interrupted
+
 0.02     09/27/2009
     Add new option --bell-on-watcher to send a bell to your terminal whenever
     a watcher connects
