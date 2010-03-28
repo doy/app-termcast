@@ -74,7 +74,15 @@ has _got_winch => (
     init_arg => undef,
 );
 
-sub connect {
+has socket => (
+    traits     => ['NoGetopt'],
+    is         => 'rw',
+    isa        => 'IO::Socket::INET',
+    lazy_build => 1,
+    init_arg   => undef,
+);
+
+sub _build_socket {
     my $self = shift;
     my $socket = IO::Socket::INET->new(PeerAddr => $self->host,
                                        PeerPort => $self->port);
@@ -84,39 +92,81 @@ sub connect {
     return $socket;
 }
 
-sub run {
+has pty => (
+    traits     => ['NoGetopt'],
+    is         => 'rw',
+    isa        => 'IO::Pty::Easy',
+    lazy_build => 1,
+    init_arg   => undef,
+);
+
+sub _build_pty {
     my $self = shift;
     my @argv = @{ $self->extra_argv };
     push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
-
-    my $socket = $self->connect;
-    my $sockfd = fileno($socket);
-
     my $pty = IO::Pty::Easy->new(raw => 0);
     $pty->spawn(@argv);
-    my $ptyfd = fileno($pty);
+    return $pty;
+}
 
-    my ($rin, $rout) = '';
-    vec($rin, fileno(STDIN) ,1) = 1;
-    vec($rin, $ptyfd, 1) = 1;
+sub _build_select_args {
+    my $self = shift;
+    my $sockfd = fileno($self->socket);
+    my $ptyfd  = fileno($self->pty);
+    my $infd   = fileno(STDIN);
+
+    my $rin = '';
+    vec($rin, $infd   ,1) = 1;
+    vec($rin, $ptyfd,  1) = 1;
     vec($rin, $sockfd, 1) = 1;
-    my ($win, $wout) = '';
+
+    my $win = '';
     vec($win, $sockfd, 1) = 1;
-    my ($ein, $eout) = '';
+
+    my $ein = '';
     vec($ein, $sockfd, 1) = 1;
+
+    return ($rin, $win, $ein);
+}
+
+sub _socket_ready {
+    my $self = shift;
+    my ($vec) = @_;
+    vec($vec, fileno($self->socket), 1);
+}
+
+sub _pty_ready {
+    my $self = shift;
+    my ($vec) = @_;
+    vec($vec, fileno($self->pty), 1);
+}
+
+sub _in_ready {
+    my $self = shift;
+    my ($vec) = @_;
+    vec($vec, fileno(STDIN), 1);
+}
+
+sub run {
+    my $self = shift;
+
     ReadMode 5;
     my $guard = Scope::Guard->new(sub { ReadMode 0 });
+
+    my ($rin, $win, $ein) = $self->_build_select_args;
+    my ($rout, $wout, $eout);
+
     local $SIG{WINCH} = sub { $self->_got_winch(1) };
     while (1) {
-        my $ready = select($rout = $rin, undef, $eout = $ein, undef);
-        if (vec($eout, $sockfd, 1)) {
+        select($rout = $rin, undef, $eout = $ein, undef);
+
+        if ($self->_socket_ready($eout)) {
             Carp::carp("Lost connection to server ($!), reconnecting...");
-            $socket = $self->connect;
-            vec($rin, $sockfd, 1) = 0;
-            $sockfd = fileno($socket);
-            vec($rin, $sockfd, 1) = 1;
+            $self->clear_socket;
+            ($rin, $win, $ein) = $self->_build_select_args;
         }
-        if (vec($rout, fileno(STDIN), 1)) {
+
+        if ($self->_in_ready($rout)) {
             my $buf;
             sysread STDIN, $buf, 4096;
             if (!defined $buf || length $buf == 0) {
@@ -128,10 +178,12 @@ sub run {
                     unless defined $buf;
                 last;
             }
-            $pty->write($buf);
+
+            $self->pty->write($buf);
         }
-        if (vec($rout, $ptyfd, 1)) {
-            my $buf = $pty->read(0);
+
+        if ($self->_pty_ready($rout)) {
+            my $buf = $self->pty->read(0);
             if (!defined $buf || length $buf == 0) {
                 if ($self->_got_winch) {
                     $self->_got_winch(0);
@@ -141,20 +193,21 @@ sub run {
                     unless defined $buf;
                 last;
             }
+
             syswrite STDOUT, $buf;
-            my $ready = select(undef, $wout = $win, undef, $self->timeout);
-            if (!$ready) {
+
+            my $ready = select(undef, $wout = $win, $eout = $ein, $self->timeout);
+            if (!$ready || $self->_socket_ready($eout)) {
                 Carp::carp("Lost connection to server ($!), reconnecting...");
-                $socket = $self->connect;
-                vec($rin, $sockfd, 1) = 0;
-                $sockfd = fileno($socket);
-                vec($rin, $sockfd, 1) = 1;
+                $self->clear_socket;
+                ($rin, $win, $ein) = $self->_build_select_args;
             }
-            $socket->write($buf);
+            $self->socket->write($buf);
         }
-        if (vec($rout, $sockfd, 1)) {
+
+        if ($self->_socket_ready($rout)) {
             my $buf;
-            $socket->recv($buf, 4096);
+            $self->socket->recv($buf, 4096);
             if (!defined $buf || length $buf == 0) {
                 if ($self->_got_winch) {
                     $self->_got_winch(0);
@@ -164,6 +217,7 @@ sub run {
                     unless defined $buf;
                 last;
             }
+
             if ($self->bell_on_watcher) {
                 # something better to do here?
                 syswrite STDOUT, "\a";
