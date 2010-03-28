@@ -78,6 +78,8 @@ sub connect {
     my $self = shift;
     my $socket = IO::Socket::INET->new(PeerAddr => $self->host,
                                        PeerPort => $self->port);
+    die "Couldn't connect to " . $self->host . ": $!"
+        unless $socket;
     $socket->write('hello '.$self->user.' '.$self->password."\n");
     return $socket;
 }
