@@ -100,11 +100,20 @@ sub run {
     vec($rin, $sockfd, 1) = 1;
     my ($win, $wout) = '';
     vec($win, $sockfd, 1) = 1;
+    my ($ein, $eout) = '';
+    vec($ein, $sockfd, 1) = 1;
     ReadMode 5;
     my $guard = Scope::Guard->new(sub { ReadMode 0 });
     local $SIG{WINCH} = sub { $self->_got_winch(1) };
     while (1) {
-        my $ready = select($rout = $rin, undef, undef, undef);
+        my $ready = select($rout = $rin, undef, $eout = $ein, undef);
+        if (vec($eout, $sockfd, 1)) {
+            Carp::carp("Lost connection to server ($!), reconnecting...");
+            $socket = $self->connect;
+            vec($rin, $sockfd, 1) = 0;
+            $sockfd = fileno($socket);
+            vec($rin, $sockfd, 1) = 1;
+        }
         if (vec($rout, fileno(STDIN), 1)) {
             my $buf;
             sysread STDIN, $buf, 4096;
