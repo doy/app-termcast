@@ -1,0 +1,50 @@
+#!/usr/bin/env perl
+use strict;
+use warnings;
+use App::Termcast;
+eval { require Term::TtyRec::Plus }
+    || die "This script requires the Term::TtyRec::Plus module";
+
+=head1 NAME
+
+stream_ttyrec - play a ttyrec to a termcast channel
+
+=head1 SYNOPSIS
+
+  stream_ttyrec [options] [ttyrec_file]
+
+=head1 DESCRIPTION
+
+See L<App::Termcast> for options documentation. This program will stream a
+ttyrec file to the given termcast channel. The ttyrec file may be given on the
+command line, or it will be read from STDIN.
+
+=cut
+
+my $tc = App::Termcast->new_with_options;
+my ($file) = @{ $tc->extra_argv };
+
+my $fh;
+if (defined($file)) {
+    open $fh, '<', $file or die "Couldn't open ttyrec $file for reading: $!";
+}
+else {
+    $fh = \*STDIN;
+}
+
+my $ttyrec = Term::TtyRec::Plus->new(filehandle => $fh);
+while (my $frame = $ttyrec->next_frame) {
+    select undef, undef, undef, $frame->{diff};
+    $tc->write_to_termcast($frame->{data});
+}
+
+=head1 AUTHOR
+
+  Jesse Luehrs <doy at tozt dot net>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2009-2010 by Jesse Luehrs.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as perl itself.
