@@ -101,12 +101,7 @@ has pty => (
 );
 
 sub _build_pty {
-    my $self = shift;
-    my @argv = @{ $self->extra_argv };
-    push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
-    my $pty = IO::Pty::Easy->new(raw => 0);
-    $pty->spawn(@argv);
-    return $pty;
+    IO::Pty::Easy->new(raw => 0);
 }
 
 sub _build_select_args {
@@ -168,9 +163,12 @@ sub write_to_termcast {
 
 sub run {
     my $self = shift;
+    my @cmd = @_;
 
     ReadMode 5;
     my $guard = Scope::Guard->new(sub { ReadMode 0 });
+
+    $self->pty->spawn(@cmd) || die "Couldn't spawn @cmd: $!";
 
     local $SIG{WINCH} = sub { $self->_got_winch(1) };
     while (1) {

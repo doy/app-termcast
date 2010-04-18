@@ -17,7 +17,10 @@ See L<App::Termcast> for documentation.
 
 =cut
 
-App::Termcast->new_with_options->run;
+my $tc = App::Termcast->new_with_options;
+my @argv = @{ $tc->extra_argv };
+push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
+App::Termcast->new_with_options->run(@argv);
 
 =head1 AUTHOR
 
