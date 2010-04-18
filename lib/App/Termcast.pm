@@ -215,7 +215,6 @@ sub run {
                 }
                 Carp::croak("Error reading from socket: $!")
                     unless defined $buf;
-                last;
             }
 
             if ($self->bell_on_watcher) {
