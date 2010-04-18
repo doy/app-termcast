@@ -111,20 +111,24 @@ sub _build_pty {
 
 sub _build_select_args {
     my $self = shift;
-    my $sockfd = fileno($self->socket);
-    my $ptyfd  = fileno($self->pty);
-    my $infd   = fileno(STDIN);
+    my @for = @_ ? @_ : (qw(socket pty input));
+    my %for = map { $_ => 1 } @for;
 
-    my $rin = '';
-    vec($rin, $infd   ,1) = 1;
-    vec($rin, $ptyfd,  1) = 1;
-    vec($rin, $sockfd, 1) = 1;
-
-    my $win = '';
-    vec($win, $sockfd, 1) = 1;
-
-    my $ein = '';
-    vec($ein, $sockfd, 1) = 1;
+    my ($rin, $win, $ein) = ('', '', '');
+    if ($for{socket}) {
+        my $sockfd = fileno($self->socket);
+        vec($rin, $sockfd, 1) = 1;
+        vec($win, $sockfd, 1) = 1;
+        vec($ein, $sockfd, 1) = 1;
+    }
+    if ($for{pty}) {
+        my $ptyfd  = fileno($self->pty);
+        vec($rin, $ptyfd,  1) = 1;
+    }
+    if ($for{input}) {
+        my $infd   = fileno(STDIN);
+        vec($rin, $infd   ,1) = 1;
+    }
 
     return ($rin, $win, $ein);
 }
@@ -147,23 +151,36 @@ sub _in_ready {
     vec($vec, fileno(STDIN), 1);
 }
 
+sub write_to_termcast {
+    my $self = shift;
+    my ($buf) = @_;
+
+    my ($rin, $win, $ein) = $self->_build_select_args('socket');
+    my ($rout, $wout, $eout);
+    my $ready = select(undef, $wout = $win, $eout = $ein, $self->timeout);
+    if (!$ready || $self->_socket_ready($eout)) {
+        Carp::carp("Lost connection to server ($!), reconnecting...");
+        $self->clear_socket;
+        return $self->socket_write(@_);
+    }
+    $self->socket->write($buf);
+}
+
 sub run {
     my $self = shift;
 
     ReadMode 5;
     my $guard = Scope::Guard->new(sub { ReadMode 0 });
 
-    my ($rin, $win, $ein) = $self->_build_select_args;
-    my ($rout, $wout, $eout);
-
     local $SIG{WINCH} = sub { $self->_got_winch(1) };
     while (1) {
+        my ($rin, $win, $ein) = $self->_build_select_args;
+        my ($rout, $wout, $eout);
         select($rout = $rin, undef, $eout = $ein, undef);
 
         if ($self->_socket_ready($eout)) {
             Carp::carp("Lost connection to server ($!), reconnecting...");
             $self->clear_socket;
-            ($rin, $win, $ein) = $self->_build_select_args;
         }
 
         if ($self->_in_ready($rout)) {
@@ -196,13 +213,7 @@ sub run {
 
             syswrite STDOUT, $buf;
 
-            my $ready = select(undef, $wout = $win, $eout = $ein, $self->timeout);
-            if (!$ready || $self->_socket_ready($eout)) {
-                Carp::carp("Lost connection to server ($!), reconnecting...");
-                $self->clear_socket;
-                ($rin, $win, $ein) = $self->_build_select_args;
-            }
-            $self->socket->write($buf);
+            $self->write_to_termcast($buf);
         }
 
         if ($self->_socket_ready($rout)) {
