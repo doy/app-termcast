@@ -13,7 +13,8 @@ termcast - broadcast your terminal sessions for remote viewing
 
 =head1 DESCRIPTION
 
-See L<App::Termcast> for documentation.
+Runs C<command> (or a shell, if the command isn't given), while broadcasting it
+to a termcast server. See L<App::Termcast> for options documentation.
 
 =cut
 

@@ -12,22 +12,39 @@ App::Termcast - broadcast your terminal sessions for remote viewing
 
 =head1 SYNOPSIS
 
-  termcast [options] [command]
+  my $tc = App::Termcast->new(user => 'foo');
+  $tc->run('bash');
 
 =head1 DESCRIPTION
 
 App::Termcast is a client for the L<http://termcast.org/> service, which allows
-broadcasting of a terminal session for remote viewing. It will either run a
-command given on the command line, or a shell.
+broadcasting of a terminal session for remote viewing.
+
+=cut
+
+=head1 ATTRIBUTES
+
+=cut
+
+=head2 host
+
+Server to connect to (defaults to noway.ratry.ru, the host for the termcast.org
+service).
 
 =cut
 
 has host => (
     is      => 'rw',
     isa     => 'Str',
-    default => 'noway.ratry.ru',
+    default => 'termcast.org',
     documentation => 'Hostname of the termcast server to connect to',
 );
+
+=head2 port
+
+Port to use on the termcast server (defaults to 31337).
+
+=cut
 
 has port => (
     is      => 'rw',
@@ -36,12 +53,28 @@ has port => (
     documentation => 'Port to connect to on the termcast server',
 );
 
+=head2 user
+
+Username to use (defaults to the local username).
+
+=cut
+
 has user => (
     is      => 'rw',
     isa     => 'Str',
     default => sub { $ENV{USER} },
     documentation => 'Username for the termcast server',
 );
+
+=head2 password
+
+Password for the given user. The password is set the first time that username
+connects, and must be the same every subsequent time. It is sent in plaintext
+as part of the connection process, so don't use an important password here.
+Defaults to 'asdf' since really, a password isn't all that important unless
+you're worried about being impersonated.
+
+=cut
 
 has password => (
     is      => 'rw',
@@ -51,6 +84,13 @@ has password => (
                    . "                              (mostly unimportant)",
 );
 
+=head2 bell_on_watcher
+
+Whether or not to send a bell to the terminal when a watcher connects or
+disconnects. Defaults to false.
+
+=cut
+
 has bell_on_watcher => (
     is      => 'rw',
     isa     => 'Bool',
@@ -58,6 +98,13 @@ has bell_on_watcher => (
     documentation => "Send a terminal bell when a watcher connects\n"
                    . "                              or disconnects",
 );
+
+=head2 timeout
+
+How long in seconds to use for the timeout to the termcast server. Defaults to
+5.
+
+=cut
 
 has timeout => (
     is      => 'rw',
@@ -146,6 +193,16 @@ sub _in_ready {
     vec($vec, fileno(STDIN), 1);
 }
 
+=head1 METHODS
+
+=cut
+
+=head2 write_to_termcast $BUF
+
+Sends C<$BUF> to the termcast server.
+
+=cut
+
 sub write_to_termcast {
     my $self = shift;
     my ($buf) = @_;
@@ -160,6 +217,14 @@ sub write_to_termcast {
     }
     $self->socket->write($buf);
 }
+
+=head2 run @ARGV
+
+Runs the given command in the local terminal as though via C<exec>, but streams
+all output from that command to the termcast server. The command may be an
+interactive program (in fact, this is the most useful case).
+
+=cut
 
 sub run {
     my $self = shift;
@@ -239,11 +304,7 @@ no Moose;
 
 =head1 TODO
 
-Factor some stuff out so applications can call this standalone?
-
 Use L<MooseX::SimpleConfig> to make configuration easier.
-
-Do something about the watcher notifications that the termcast server sends.
 
 =head1 BUGS
 

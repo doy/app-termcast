@@ -15,9 +15,9 @@ stream_ttyrec - play a ttyrec to a termcast channel
 
 =head1 DESCRIPTION
 
-See L<App::Termcast> for options documentation. This program will stream a
-ttyrec file to the given termcast channel. The ttyrec file may be given on the
-command line, or it will be read from STDIN.
+This program will stream a ttyrec file to the given termcast channel. The
+ttyrec file may be given on the command line, or it will be read from STDIN.
+See L<App::Termcast> for options documentation.
 
 =cut
 
