@@ -1,5 +1,17 @@
 Revision history for App::Termcast
 
+0.04     04/18/2010
+    Stop ending the session when there is an error while writing to the
+    termcast server
+
+    Refactor the code a bit to allow sending arbitrary data to the termcast
+    server without requiring an interactive session
+
+    Add a script to stream a ttyrec file to the termcast server
+
+    The command for the run method to run is now required to be passed to the
+    run method, rather than figuring it out from ARGV directly
+
 0.03     03/27/2010
     Reconnect to the termcast server if the connection is interrupted
 
