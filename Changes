@@ -1,5 +1,8 @@
 Revision history for App::Termcast
 
+0.06     04/19/2010
+    Fix reconnecting (was using wrong method name)
+
 0.05     04/18/2010
     Fix the default termcast server (how did that get changed?)
 
