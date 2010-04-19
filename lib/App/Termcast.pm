@@ -36,7 +36,7 @@ service).
 has host => (
     is      => 'rw',
     isa     => 'Str',
-    default => 'termcast.org',
+    default => 'noway.ratry.ru',
     documentation => 'Hostname of the termcast server to connect to',
 );
 
