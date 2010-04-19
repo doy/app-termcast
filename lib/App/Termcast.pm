@@ -135,7 +135,7 @@ sub _build_socket {
                                        PeerPort => $self->port);
     die "Couldn't connect to " . $self->host . ": $!"
         unless $socket;
-    $socket->write('hello '.$self->user.' '.$self->password."\n");
+    $socket->syswrite('hello '.$self->user.' '.$self->password."\n");
     return $socket;
 }
 
@@ -215,7 +215,7 @@ sub write_to_termcast {
         $self->clear_socket;
         return $self->socket_write(@_);
     }
-    $self->socket->write($buf);
+    $self->socket->syswrite($buf);
 }
 
 =head2 run @ARGV
