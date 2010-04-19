@@ -213,7 +213,7 @@ sub write_to_termcast {
     if (!$ready || $self->_socket_ready($eout)) {
         Carp::carp("Lost connection to server ($!), reconnecting...");
         $self->clear_socket;
-        return $self->socket_write(@_);
+        return $self->write_to_termcast(@_);
     }
     $self->socket->syswrite($buf);
 }
