@@ -1,5 +1,8 @@
 Revision history for App::Termcast
 
+0.05     04/18/2010
+    Fix the default termcast server (how did that get changed?)
+
 0.04     04/18/2010
     Stop ending the session when there is an error while writing to the
     termcast server
