@@ -1,5 +1,9 @@
 Revision history for App::Termcast
 
+0.07     06/15/2010
+    Refactor the establishment message (the first line sent to the
+    termcast server) to its own attribute (jasonmay)
+
 0.06     04/19/2010
     Fix reconnecting (was using wrong method name)
 
