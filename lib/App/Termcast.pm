@@ -121,6 +121,18 @@ has _got_winch => (
     init_arg => undef,
 );
 
+has establishment_message => (
+    traits     => ['NoGetopt'],
+    is         => 'ro',
+    isa        => 'Str',
+    lazy_build => 1,
+);
+
+sub _build_establishment_message {
+    my $self = shift;
+    return sprintf("hello %s %s\n", $self->user, $self->password);
+}
+
 has socket => (
     traits     => ['NoGetopt'],
     is         => 'rw',
@@ -135,7 +147,7 @@ sub _build_socket {
                                        PeerPort => $self->port);
     die "Couldn't connect to " . $self->host . ": $!"
         unless $socket;
-    $socket->syswrite('hello '.$self->user.' '.$self->password."\n");
+    $socket->syswrite($self->establishment_message);
     return $socket;
 }
 
