@@ -1,14 +1,13 @@
 package App::Termcast;
 use Moose;
+# ABSTRACT: broadcast your terminal sessions for remote viewing
+
+with 'MooseX::Getopt::Dashes';
+
 use IO::Pty::Easy;
 use IO::Socket::INET;
 use Scope::Guard;
 use Term::ReadKey;
-with 'MooseX::Getopt::Dashes';
-
-=head1 NAME
-
-App::Termcast - broadcast your terminal sessions for remote viewing
 
 =head1 SYNOPSIS
 
@@ -22,11 +21,7 @@ broadcasting of a terminal session for remote viewing.
 
 =cut
 
-=head1 ATTRIBUTES
-
-=cut
-
-=head2 host
+=attr host
 
 Server to connect to (defaults to noway.ratry.ru, the host for the termcast.org
 service).
@@ -40,7 +35,7 @@ has host => (
     documentation => 'Hostname of the termcast server to connect to',
 );
 
-=head2 port
+=attr port
 
 Port to use on the termcast server (defaults to 31337).
 
@@ -53,7 +48,7 @@ has port => (
     documentation => 'Port to connect to on the termcast server',
 );
 
-=head2 user
+=attr user
 
 Username to use (defaults to the local username).
 
@@ -66,7 +61,7 @@ has user => (
     documentation => 'Username for the termcast server',
 );
 
-=head2 password
+=attr password
 
 Password for the given user. The password is set the first time that username
 connects, and must be the same every subsequent time. It is sent in plaintext
@@ -84,7 +79,7 @@ has password => (
                    . "                              (mostly unimportant)",
 );
 
-=head2 bell_on_watcher
+=attr bell_on_watcher
 
 Whether or not to send a bell to the terminal when a watcher connects or
 disconnects. Defaults to false.
@@ -99,7 +94,7 @@ has bell_on_watcher => (
                    . "                              or disconnects",
 );
 
-=head2 timeout
+=attr timeout
 
 How long in seconds to use for the timeout to the termcast server. Defaults to
 5.
@@ -205,11 +200,7 @@ sub _in_ready {
     vec($vec, fileno(STDIN), 1);
 }
 
-=head1 METHODS
-
-=cut
-
-=head2 write_to_termcast $BUF
+=method write_to_termcast $BUF
 
 Sends C<$BUF> to the termcast server.
 
@@ -230,7 +221,7 @@ sub write_to_termcast {
     $self->socket->syswrite($buf);
 }
 
-=head2 run @ARGV
+=method run @ARGV
 
 Runs the given command in the local terminal as though via C<exec>, but streams
 all output from that command to the termcast server. The command may be an
@@ -318,56 +309,9 @@ no Moose;
 
 Use L<MooseX::SimpleConfig> to make configuration easier.
 
-=head1 BUGS
-
-No known bugs.
-
-Please report any bugs through RT: email
-C<bug-app-termcast at rt.cpan.org>, or browse to
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=App-Termcast>.
-
 =head1 SEE ALSO
 
 L<http://termcast.org/>
-
-=head1 SUPPORT
-
-You can find this documentation for this module with the perldoc command.
-
-    perldoc App::Termcast
-
-You can also look for information at:
-
-=over 4
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/App-Termcast>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/App-Termcast>
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-Termcast>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/App-Termcast>
-
-=back
-
-=head1 AUTHOR
-
-  Jesse Luehrs <doy at tozt dot net>
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is copyright (c) 2009-2010 by Jesse Luehrs.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as perl itself.
 
 =cut
 

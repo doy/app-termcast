@@ -1,43 +1,45 @@
-Revision history for App::Termcast
+Revision history for App-Termcast
 
-0.07     06/15/2010
-    Refactor the establishment message (the first line sent to the
-    termcast server) to its own attribute (jasonmay)
+{{$NEXT}}
+      - Refactor the establishment message (the first line sent to the termcast
+        server) to its own attribute (jasonmay)
 
-0.06     04/19/2010
-    Fix reconnecting (was using wrong method name)
+      - Convert to more dzil stuff
 
-0.05     04/18/2010
-    Fix the default termcast server (how did that get changed?)
+0.06  2010-04-19
+      - Fix reconnecting (was using wrong method name)
 
-0.04     04/18/2010
-    Stop ending the session when there is an error while writing to the
-    termcast server
+0.05  2010-04-18
+      - Fix the default termcast server (how did that get changed?)
 
-    Refactor the code a bit to allow sending arbitrary data to the termcast
-    server without requiring an interactive session
+0.04  2010-04-18
+      - Stop ending the session when there is an error while writing to the
+        termcast server
 
-    Add a script to stream a ttyrec file to the termcast server
+      - Refactor the code a bit to allow sending arbitrary data to the termcast
+        server without requiring an interactive session
 
-    The command for the run method to run is now required to be passed to the
-    run method, rather than figuring it out from ARGV directly
+      - Add a script to stream a ttyrec file to the termcast server
 
-0.03     03/27/2010
-    Reconnect to the termcast server if the connection is interrupted
+      - The command for the run method to run is now required to be passed to
+        the run method, rather than figuring it out from ARGV directly
 
-0.02     09/27/2009
-    Add new option --bell-on-watcher to send a bell to your terminal whenever
-    a watcher connects
+0.03  2010-03-27
+      - Reconnect to the termcast server if the connection is interrupted
 
-    Stop dying when the terminal is resized
+0.02  2009-09-27
+      - Add new option --bell-on-watcher to send a bell to your terminal
+        whenever a watcher connects
 
-    Use Scope::Guard to better clean up ReadMode when we're done
+      - Stop dying when the terminal is resized
 
-0.01     07/11/2009
-    A few more bug fixes, and actual tests
+      - Use Scope::Guard to better clean up ReadMode when we're done
 
-0.01_02  07/10/2009
-    A few bug fixes
+0.01  2009-07-11
+      - A few more bug fixes, and actual tests
 
-0.01_01  07/10/2009
-    Initial release
+0.01_02  2009-07-10
+      - A few bug fixes
+
+0.01_01  2009-07-10
+      - Initial release

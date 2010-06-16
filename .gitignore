@@ -6,3 +6,8 @@ inc
 pm_to_blib
 MANIFEST
 Makefile.old
+nytprof.out
+MANIFEST.bak
+*.sw[po]
+.build
+App-Termcast-*
