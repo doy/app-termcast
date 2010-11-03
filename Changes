@@ -1,6 +1,8 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+
+0.09  2010-11-03
       - More window resizing fixes
 
 0.08  2010-11-03
