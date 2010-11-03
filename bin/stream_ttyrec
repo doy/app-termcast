@@ -4,10 +4,8 @@ use warnings;
 use App::Termcast;
 eval { require Term::TtyRec::Plus }
     || die "This script requires the Term::TtyRec::Plus module";
-
-=head1 NAME
-
-stream_ttyrec - play a ttyrec to a termcast channel
+# PODNAME: stream_ttyrec
+# ABSTRACT: play a ttyrec to a termcast channel
 
 =head1 SYNOPSIS
 
@@ -37,14 +35,3 @@ while (my $frame = $ttyrec->next_frame) {
     select undef, undef, undef, $frame->{diff};
     $tc->write_to_termcast($frame->{data});
 }
-
-=head1 AUTHOR
-
-  Jesse Luehrs <doy at tozt dot net>
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is copyright (c) 2009-2010 by Jesse Luehrs.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as perl itself.

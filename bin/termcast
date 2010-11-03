@@ -2,10 +2,8 @@
 use strict;
 use warnings;
 use App::Termcast;
-
-=head1 NAME
-
-termcast - broadcast your terminal sessions for remote viewing
+# PODNAME: termcast
+# ABSTRACT: broadcast your terminal sessions for remote viewing
 
 =head1 SYNOPSIS
 
@@ -22,14 +20,3 @@ my $tc = App::Termcast->new_with_options;
 my @argv = @{ $tc->extra_argv };
 push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
 App::Termcast->new_with_options->run(@argv);
-
-=head1 AUTHOR
-
-  Jesse Luehrs <doy at tozt dot net>
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is copyright (c) 2009-2010 by Jesse Luehrs.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as perl itself.
