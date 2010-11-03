@@ -138,13 +138,18 @@ has socket => (
 
 sub _build_socket {
     my $self = shift;
+
     my $socket;
-    while (!$socket) {
+    {
         $socket = IO::Socket::INET->new(PeerAddr => $self->host,
                                         PeerPort => $self->port);
-        Carp::carp "Couldn't connect to " . $self->host . ": $!"
-            unless $socket;
+        if (!$socket) {
+            Carp::carp "Couldn't connect to " . $self->host . ": $!";
+            sleep 5;
+            redo;
+        }
     }
+
     $socket->syswrite($self->establishment_message);
     return $socket;
 }
