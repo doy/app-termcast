@@ -146,6 +146,10 @@ sub _build_socket {
     return $socket;
 }
 
+before clear_socket => sub {
+    Carp::carp("Lost connection to server ($!), reconnecting...");
+};
+
 has pty => (
     traits     => ['NoGetopt'],
     is         => 'rw',
@@ -214,7 +218,6 @@ sub write_to_termcast {
     my ($rout, $wout, $eout);
     my $ready = select(undef, $wout = $win, $eout = $ein, $self->timeout);
     if (!$ready || $self->_socket_ready($eout)) {
-        Carp::carp("Lost connection to server ($!), reconnecting...");
         $self->clear_socket;
         return $self->write_to_termcast(@_);
     }
@@ -245,7 +248,6 @@ sub run {
         select($rout = $rin, undef, $eout = $ein, undef);
 
         if ($self->_socket_ready($eout)) {
-            Carp::carp("Lost connection to server ($!), reconnecting...");
             $self->clear_socket;
         }
 
