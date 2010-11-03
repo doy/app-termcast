@@ -1,6 +1,10 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+      - Clean up a few more edge cases with disconnects and window resizing
+        (doy, jasonmay)
+      - Repeatedly attempt reconnects if they fail, rather than just giving up
+        after trying once
 
 0.07  2010-06-15
       - Refactor the establishment message (the first line sent to the termcast
