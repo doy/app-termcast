@@ -1,6 +1,8 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+
+0.08  2010-11-03
       - Clean up a few more edge cases with disconnects and window resizing
         (doy, jasonmay)
       - Repeatedly attempt reconnects if they fail, rather than just giving up
