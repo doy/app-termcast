@@ -19,4 +19,4 @@ to a termcast server. See L<App::Termcast> for options documentation.
 my $tc = App::Termcast->new_with_options;
 my @argv = @{ $tc->extra_argv };
 push @argv, ($ENV{SHELL} || '/bin/sh') if !@argv;
-App::Termcast->new_with_options->run(@argv);
+$tc->run(@argv);
