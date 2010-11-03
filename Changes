@@ -1,6 +1,7 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+      - More window resizing fixes
 
 0.08  2010-11-03
       - Clean up a few more edge cases with disconnects and window resizing
