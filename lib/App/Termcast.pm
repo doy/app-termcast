@@ -295,8 +295,13 @@ sub run {
                     $self->_got_winch(0);
                     redo;
                 }
-                Carp::croak("Error reading from socket: $!")
-                    unless defined $buf;
+
+                if (defined $buf) {
+                    $self->clear_socket;
+                }
+                else {
+                    Carp::croak("Error reading from socket: $!");
+                }
             }
 
             if ($self->bell_on_watcher) {
