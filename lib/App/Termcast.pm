@@ -253,7 +253,8 @@ sub run {
     while (1) {
         my ($rin, $win, $ein) = $self->_build_select_args;
         my ($rout, $wout, $eout);
-        select($rout = $rin, undef, $eout = $ein, undef);
+        my $select_res = select($rout = $rin, undef, $eout = $ein, undef);
+        redo if $select_res == -1 && ($!{EAGAIN} || $!{EINTR});
 
         if ($self->_socket_ready($eout)) {
             $self->clear_socket;
