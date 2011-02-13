@@ -150,7 +150,10 @@ sub _build_socket {
         }
     }
 
+    chomp( my ($cols, $lines) = (`tput cols`, `tput lines`) );
+
     $socket->syswrite($self->establishment_message);
+    $socket->syswrite("geom $cols $lines\nfinish\n\e[H\e[2J");
 
     # ensure the server accepted our connection info
     # can't use _build_select_args, since that would cause recursion
