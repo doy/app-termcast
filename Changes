@@ -4,6 +4,7 @@ Revision history for App-Termcast
       - Better handling of the terminal's raw mode, especially during
         reconnections
       - Ensure that the server actually accepts our password
+      - Send terminal geometry with hello
 
 0.09  2010-11-03
       - More window resizing fixes
