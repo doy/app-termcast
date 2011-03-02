@@ -150,7 +150,7 @@ sub _build_socket {
         }
     }
 
-    chomp( my ($cols, $lines) = (`tput cols`, `tput lines`) );
+    my ($cols, $lines) = GetTerminalSize();
 
     $socket->syswrite($self->establishment_message);
     $socket->syswrite("geom $cols $lines\nfinish\n\e[H\e[2J");
