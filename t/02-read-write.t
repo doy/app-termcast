@@ -45,6 +45,10 @@ EOF
         $client->recv($login, 4096);
         is($login, "hello test tset\n", 'got the correct login info');
         $client->send("hello, test\n");
+
+        # skip over metadata - tested in 01-basic.t
+        $client->recv(my $metadata, 4096);
+
         my $output;
         my $total_out = '';
         while (1) {
