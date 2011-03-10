@@ -8,6 +8,7 @@ use IO::Pty::Easy;
 use IO::Socket::INET;
 use Scope::Guard;
 use Term::ReadKey;
+use JSON;
 
 =head1 SYNOPSIS
 
@@ -136,6 +137,15 @@ has socket => (
     init_arg   => undef,
 );
 
+sub _form_metadata_string {
+    my $self = shift;
+    my %data = @_;
+
+    my $json = JSON::encode_json(\%data);
+
+    return "\e[H\x00$json\xff\e[H\e[2J";
+}
+
 sub _build_socket {
     my $self = shift;
 
@@ -152,8 +162,17 @@ sub _build_socket {
 
     my ($cols, $lines) = GetTerminalSize();
 
+    my $resize_string = $self->_form_metadata_string(
+        geometry => [ $cols, $lines ],
+    );
+
     $socket->syswrite($self->establishment_message);
-    $socket->syswrite("geom $cols $lines\nfinish\n\e[H\e[2J");
+    select undef, undef, undef, 0.1; # XXX yuck :)
+                                     # this is going away once I move
+                                     # auth to on_data in ::Server
+                                     # instead of on_connect or whatever
+                                     #         - jasonmay
+    $socket->syswrite($resize_string);
 
     # ensure the server accepted our connection info
     # can't use _build_select_args, since that would cause recursion
@@ -307,7 +326,18 @@ sub run {
     local $SIG{WINCH} = sub {
         $self->_got_winch(1);
         $self->pty->slave->clone_winsize_from(\*STDIN);
+
         $self->pty->kill('WINCH', 1);
+
+        syswrite STDOUT, "\e[H\e[2J"; # for the sake of sending a
+                                      # clear to the client anyway
+
+        my ($cols, $lines) = GetTerminalSize();
+        my $resize_string = $self->_form_metadata_string(
+            geometry => [$cols, $lines],
+        );
+
+        syswrite $self->socket, $resize_string;
     };
 
     while (1) {
