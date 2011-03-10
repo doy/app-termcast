@@ -5,6 +5,7 @@ Revision history for App-Termcast
         reconnections
       - Ensure that the server actually accepts our password
       - Send terminal geometry with hello
+      - Send terminal geometry metadata on the fly
 
 0.09  2010-11-03
       - More window resizing fixes
