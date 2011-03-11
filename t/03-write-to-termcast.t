@@ -29,11 +29,9 @@ test_tcp(
         my $client = $sock->accept;
         my $login;
         $client->recv($login, 4096);
-        is($login, "hello test tset\n", 'got the correct login info');
+        my $auth_regexp = qr/^hello test tset\n\e\[H\x00.+?\xff\e\[H\e\[2J/;
+        like($login, $auth_regexp, 'got the correct login info');
         $client->send("hello, test\n");
-
-        # skip over metadata - tested in 01-basic.t
-        $client->recv(my $metadata, 4096);
 
         my $buf;
         $client->recv($buf, 4096);
