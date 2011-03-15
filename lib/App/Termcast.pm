@@ -244,6 +244,8 @@ sub run {
     my $self = shift;
     my @cmd = @_;
 
+    $self->socket;
+
     ReadMode 5;
     my $guard = Scope::Guard->new(sub { ReadMode 0 });
 
@@ -267,7 +269,10 @@ sub run {
         }
 
         if ($self->_socket_ready($eout)) {
+            ReadMode 0;
             $self->clear_socket;
+            $self->socket;
+            ReadMode 5;
         }
 
         if ($self->_in_ready($rout)) {
@@ -303,13 +308,11 @@ sub run {
             my $buf;
             $self->socket->recv($buf, 4096);
             if (!defined $buf || length $buf == 0) {
-                if ($self->_got_winch) {
-                    $self->_got_winch(0);
-                    redo;
-                }
-
                 if (defined $buf) {
+                    ReadMode 0;
                     $self->clear_socket;
+                    $self->socket;
+                    ReadMode 5;
                 }
                 else {
                     Carp::croak("Error reading from socket: $!");
