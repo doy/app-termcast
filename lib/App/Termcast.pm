@@ -290,10 +290,6 @@ sub run {
         if ($self->_pty_ready($rout)) {
             my $buf = $self->pty->read(0);
             if (!defined $buf || length $buf == 0) {
-                if ($self->_got_winch) {
-                    $self->_got_winch(0);
-                    redo;
-                }
                 Carp::croak("Error reading from pty: $!")
                     unless defined $buf;
                 last;
