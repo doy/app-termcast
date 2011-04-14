@@ -270,9 +270,9 @@ sub run {
     my $self = shift;
     my @cmd = @_;
 
-    $self->_raw_mode(1);
     $self->socket;
 
+    $self->_raw_mode(1);
     my $guard = Scope::Guard->new(sub { $self->_raw_mode(0) });
 
     $self->pty->spawn(@cmd) || die "Couldn't spawn @cmd: $!";
