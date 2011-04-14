@@ -151,6 +151,30 @@ sub _build_socket {
     }
 
     $socket->syswrite($self->establishment_message);
+
+    # ensure the server accepted our connection info
+    # can't use _build_select_args, since that would cause recursion
+    {
+        my ($rin, $ein, $rout, $eout) = ('') x 4;
+        vec($rin, fileno($socket), 1) = 1;
+        vec($ein, fileno($socket), 1) = 1;
+        my $res = select($rout = $rin, undef, $eout = $ein, undef);
+        redo if ($!{EAGAIN} || $!{EINTR}) && $res == -1;
+        if (vec($eout, fileno($socket), 1)) {
+            Carp::croak("Invalid password");
+        }
+        elsif (vec($rout, fileno($socket), 1)) {
+            my $buf;
+            $socket->recv($buf, 4096);
+            if (!defined $buf || length $buf == 0) {
+                Carp::croak("Invalid password");
+            }
+            elsif ($buf ne ('hello, ' . $self->user . "\n")) {
+                Carp::carp("Unknown login response from server: $buf");
+            }
+        }
+    }
+
     ReadMode 5 if $self->_raw_mode;
     return $socket;
 }
