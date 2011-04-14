@@ -243,6 +243,13 @@ has _raw_mode => (
     },
 );
 
+has _needs_termsize_update => (
+    traits  => ['NoGetopt'],
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+);
+
 sub _build_select_args {
     my $self = shift;
     my @for = @_ ? @_ : (qw(socket pty input));
@@ -302,6 +309,12 @@ sub write_to_termcast {
         $self->clear_socket;
         return $self->write_to_termcast(@_);
     }
+
+    if ($self->_needs_termsize_update) {
+        $buf = $self->termsize_message . $buf;
+        $self->_needs_termsize_update(0);
+    }
+
     $self->socket->syswrite($buf);
 }
 
@@ -333,12 +346,7 @@ sub run {
         syswrite STDOUT, "\e[H\e[2J"; # for the sake of sending a
                                       # clear to the client anyway
 
-        my ($cols, $lines) = GetTerminalSize();
-        my $resize_string = $self->_form_metadata_string(
-            geometry => [$cols, $lines],
-        );
-
-        syswrite $self->socket, $resize_string;
+        $self->_needs_termsize_update(1);
     };
 
     while (1) {
