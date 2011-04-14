@@ -13,7 +13,9 @@ BEGIN {
 test_tcp(
     client => sub {
         my $port = shift;
+        my $inc = join ':', grep { !ref } @INC;
         my $client_script = <<EOF;
+        BEGIN { \@INC = split /:/, '$inc' }
         use App::Termcast;
         my \$tc = App::Termcast->new(host => '127.0.0.1', port => $port,
                                     user => 'test', password => 'tset');
