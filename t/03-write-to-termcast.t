@@ -26,7 +26,7 @@ test_tcp(
         my $client = $sock->accept;
         my $login;
         $client->recv($login, 4096);
-        my $auth_regexp = qr/^hello test tset\n\e\[H\x00.+?\xff\e\[H\e\[2J/;
+        my $auth_regexp = qr/^hello test tset\n(?:\e\[H\x00.+?\xff\e\[H\e\[2J)?/;
         like($login, $auth_regexp, 'got the correct login info');
         $client->send("hello, test\n");
 
