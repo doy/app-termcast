@@ -8,6 +8,7 @@ use IO::Pty::Easy;
 use IO::Socket::INET;
 use Scope::Guard;
 use Term::ReadKey;
+use Try::Tiny;
 use JSON;
 
 =head1 SYNOPSIS
@@ -129,6 +130,18 @@ sub _build_establishment_message {
     return sprintf("hello %s %s\n", $self->user, $self->password);
 }
 
+sub termsize_message {
+    my $self = shift;
+
+    my ($cols, $lines) = try { GetTerminalSize() };
+
+    return '' unless $cols && $lines;
+
+    return $self->_form_metadata_string(
+        geometry => [ $cols, $lines ],
+    );
+}
+
 has socket => (
     traits     => ['NoGetopt'],
     is         => 'rw',
@@ -160,13 +173,7 @@ sub _build_socket {
         }
     }
 
-    my ($cols, $lines) = GetTerminalSize();
-
-    my $resize_string = $self->_form_metadata_string(
-        geometry => [ $cols, $lines ],
-    );
-
-    $socket->syswrite($self->establishment_message . $resize_string);
+    $socket->syswrite($self->establishment_message . $self->termsize_message);
 
     # ensure the server accepted our connection info
     # can't use _build_select_args, since that would cause recursion
