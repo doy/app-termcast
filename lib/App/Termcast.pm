@@ -151,12 +151,21 @@ sub _build_socket {
     }
 
     $socket->syswrite($self->establishment_message);
+    ReadMode 5 if $self->_raw_mode;
     return $socket;
 }
 
 before clear_socket => sub {
+    my $self = shift;
     Carp::carp("Lost connection to server ($!), reconnecting...");
+    ReadMode 0 if $self->_raw_mode;
 };
+
+sub new_socket {
+    my $self = shift;
+    $self->clear_socket;
+    $self->socket;
+}
 
 has pty => (
     traits     => ['NoGetopt'],
@@ -169,6 +178,23 @@ has pty => (
 sub _build_pty {
     IO::Pty::Easy->new(raw => 0);
 }
+
+has _raw_mode => (
+    traits  => ['NoGetopt'],
+    is      => 'rw',
+    isa     => 'Bool',
+    default => 0,
+    trigger => sub {
+        my $self = shift;
+        my ($val) = @_;
+        if ($val) {
+            ReadMode 5;
+        }
+        else {
+            ReadMode 0;
+        }
+    },
+);
 
 sub _build_select_args {
     my $self = shift;
@@ -244,10 +270,10 @@ sub run {
     my $self = shift;
     my @cmd = @_;
 
+    $self->_raw_mode(1);
     $self->socket;
 
-    ReadMode 5;
-    my $guard = Scope::Guard->new(sub { ReadMode 0 });
+    my $guard = Scope::Guard->new(sub { $self->_raw_mode(0) });
 
     $self->pty->spawn(@cmd) || die "Couldn't spawn @cmd: $!";
 
@@ -269,10 +295,7 @@ sub run {
         }
 
         if ($self->_socket_ready($eout)) {
-            ReadMode 0;
-            $self->clear_socket;
-            $self->socket;
-            ReadMode 5;
+            $self->new_socket;
         }
 
         if ($self->_in_ready($rout)) {
@@ -305,10 +328,7 @@ sub run {
             $self->socket->recv($buf, 4096);
             if (!defined $buf || length $buf == 0) {
                 if (defined $buf) {
-                    ReadMode 0;
-                    $self->clear_socket;
-                    $self->socket;
-                    ReadMode 5;
+                    $self->new_socket;
                 }
                 else {
                     Carp::croak("Error reading from socket: $!");
