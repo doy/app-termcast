@@ -2,12 +2,9 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Requires 'Test::TCP';
+
 use App::Termcast;
-BEGIN {
-    eval "use Test::TCP;";
-    plan skip_all => "Test::TCP is required for this test" if $@;
-    plan tests => 3;
-}
 
 test_tcp(
     client => sub {
@@ -38,3 +35,5 @@ test_tcp(
         is($buf, 'foo', 'wrote correctly');
     },
 );
+
+done_testing;

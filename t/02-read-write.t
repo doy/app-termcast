@@ -2,13 +2,10 @@
 use strict;
 use warnings;
 use Test::More;
-use App::Termcast;
+use Test::Requires 'Test::TCP';
 use IO::Pty::Easy;
-BEGIN {
-    eval "use Test::TCP;";
-    plan skip_all => "Test::TCP is required for this test" if $@;
-    plan tests => 5;
-}
+
+use App::Termcast;
 
 test_tcp(
     client => sub {
@@ -58,3 +55,5 @@ EOF
            'sent the right data to the server');
     },
 );
+
+done_testing;
