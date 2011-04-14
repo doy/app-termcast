@@ -6,6 +6,10 @@ use Test::Requires 'Test::TCP';
 
 use App::Termcast;
 
+no warnings 'redefine';
+local *App::Termcast::_termsize = sub { return (80, 24) };
+use warnings 'redefine';
+
 pipe(my $cread, my $swrite);
 pipe(my $sread, my $cwrite);
 
@@ -36,8 +40,9 @@ test_tcp(
         my $client = $sock->accept;
         my $login;
         $client->recv($login, 4096);
-        my $auth_regexp = qr/^hello test tset\n(?:\e\[H\x00.+?\xff\e\[H\e\[2J)?/;
-        like($login, $auth_regexp, 'got the correct login info');
+        is($login,
+           "hello test tset\n\e\[H\x00{\"geometry\":[80,24]}\xff\e\[H\e\[2J",
+           "got the correct login info");
         $client->send("hello, test\n");
         { sysread($sread, my $buf, 1) }
 

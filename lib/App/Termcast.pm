@@ -130,10 +130,14 @@ sub _build_establishment_message {
     return sprintf("hello %s %s\n", $self->user, $self->password);
 }
 
+sub _termsize {
+    return try { GetTerminalSize() } catch { (undef, undef) };
+}
+
 sub termsize_message {
     my $self = shift;
 
-    my ($cols, $lines) = try { GetTerminalSize() };
+    my ($cols, $lines) = $self->_termsize;
 
     return '' unless $cols && $lines;
 

@@ -20,6 +20,11 @@ test_tcp(
         my $client_script = <<EOF;
         BEGIN { \@INC = split /:/, '$inc' }
         use App::Termcast;
+
+        no warnings 'redefine';
+        local *App::Termcast::_termsize = sub { return (80, 24) };
+        use warnings 'redefine';
+
         my \$tc = App::Termcast->new(
             host => '127.0.0.1', port => $port,
             user => 'test', password => 'tset');
@@ -69,8 +74,9 @@ EOF
         { sysread($sread, my $buf, 1) }
         my $login;
         $client->recv($login, 4096);
-        my $auth_regexp = qr/^hello test tset\n(?:\e\[H\x00.+?\xff\e\[H\e\[2J)?/;
-        like($login, $auth_regexp, 'got the correct login info');
+        is($login,
+           "hello test tset\n\e\[H\x00{\"geometry\":[80,24]}\xff\e\[H\e\[2J",
+           "got the correct login info");
         $client->send("hello, test\n");
 
         syswrite($swrite, 'a');
