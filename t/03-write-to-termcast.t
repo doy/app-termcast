@@ -30,6 +30,7 @@ test_tcp(
         my $login;
         $client->recv($login, 4096);
         is($login, "hello test tset\n", 'got the correct login info');
+        $client->send("hello, test\n");
         my $buf;
         $client->recv($buf, 4096);
         is($buf, 'foo', 'wrote correctly');

@@ -42,6 +42,7 @@ EOF
         my $login;
         $client->recv($login, 4096);
         is($login, "hello test tset\n", 'got the correct login info');
+        $client->send("hello, test\n");
         my $output;
         my $total_out = '';
         while (1) {
