@@ -1,6 +1,8 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+
+0.10  2011-04-14
       - Better handling of the terminal's raw mode, especially during
         reconnections
       - Ensure that the server actually accepts our password
