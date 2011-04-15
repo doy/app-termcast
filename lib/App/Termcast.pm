@@ -118,6 +118,13 @@ has _got_winch => (
     init_arg => undef,
 );
 
+=method establishment_message
+
+Returns the string sent to the termcast server when connecting (typically
+containing the username and password)
+
+=cut
+
 has establishment_message => (
     traits     => ['NoGetopt'],
     is         => 'ro',
@@ -133,6 +140,13 @@ sub _build_establishment_message {
 sub _termsize {
     return try { GetTerminalSize() } catch { (undef, undef) };
 }
+
+=method termsize_message
+
+Returns the string sent to the termcast server whenever the terminal size
+changes.
+
+=cut
 
 sub termsize_message {
     my $self = shift;
@@ -212,7 +226,7 @@ before clear_socket => sub {
     ReadMode 0 if $self->_raw_mode;
 };
 
-sub new_socket {
+sub _new_socket {
     my $self = shift;
     $self->clear_socket;
     $self->socket;
@@ -365,7 +379,7 @@ sub run {
         }
 
         if ($self->_socket_ready($eout)) {
-            $self->new_socket;
+            $self->_new_socket;
         }
 
         if ($self->_in_ready($rout)) {
@@ -398,7 +412,7 @@ sub run {
             $self->socket->recv($buf, 4096);
             if (!defined $buf || length $buf == 0) {
                 if (defined $buf) {
-                    $self->new_socket;
+                    $self->_new_socket;
                 }
                 else {
                     Carp::croak("Error reading from socket: $!");
