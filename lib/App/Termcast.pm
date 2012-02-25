@@ -4,12 +4,12 @@ use Moose;
 
 with 'MooseX::Getopt::Dashes';
 
-use IO::Pty::Easy;
 use IO::Socket::INET;
-use Scope::Guard;
+use JSON;
+use Scalar::Util 'weaken';
+use Term::Filter;
 use Term::ReadKey;
 use Try::Tiny;
-use JSON;
 
 =head1 SYNOPSIS
 
@@ -110,14 +110,6 @@ has timeout => (
     documentation => "Timeout length for the connection to the termcast server",
 );
 
-has _got_winch => (
-    traits   => ['NoGetopt'],
-    is       => 'rw',
-    isa      => 'Bool',
-    default  => 0,
-    init_arg => undef,
-);
-
 =method establishment_message
 
 Returns the string sent to the termcast server when connecting (typically
@@ -191,23 +183,21 @@ sub _build_socket {
         }
     }
 
-    $socket->syswrite($self->establishment_message . $self->termsize_message);
+    $self->write_to_handle(
+        $socket, $self->establishment_message . $self->termsize_message
+    );
 
     # ensure the server accepted our connection info
     # can't use _build_select_args, since that would cause recursion
     {
-        my ($rin, $ein, $rout, $eout) = ('') x 4;
-        vec($rin, fileno($socket), 1) = 1;
-        vec($ein, fileno($socket), 1) = 1;
-        my $res = select($rout = $rin, undef, $eout = $ein, undef);
-        redo if ($!{EAGAIN} || $!{EINTR}) && $res == -1;
+        my ($rout, $eout) = $self->_term->retry_select('r', undef, $socket);
+
         if (vec($eout, fileno($socket), 1)) {
             Carp::croak("Invalid password");
         }
         elsif (vec($rout, fileno($socket), 1)) {
-            my $buf;
-            $socket->recv($buf, 4096);
-            if (!defined $buf || length $buf == 0) {
+            my $buf = $self->read_from_handle($socket, "socket");
+            if (!defined $buf) {
                 Carp::croak("Invalid password");
             }
             elsif ($buf ne ('hello, ' . $self->user . "\n")) {
@@ -216,14 +206,16 @@ sub _build_socket {
         }
     }
 
-    ReadMode 5 if $self->_raw_mode;
+    # XXX Term::Filter should maybe handle this?
+    ReadMode 5 if $self->_term->_raw_mode;
     return $socket;
 }
 
 before clear_socket => sub {
     my $self = shift;
     Carp::carp("Lost connection to server ($!), reconnecting...");
-    ReadMode 0 if $self->_raw_mode;
+    # XXX Term::Filter should maybe handle this?
+    ReadMode 0 if $self->_term->_raw_mode;
 };
 
 sub _new_socket {
@@ -232,35 +224,6 @@ sub _new_socket {
     $self->socket;
 }
 
-has pty => (
-    traits     => ['NoGetopt'],
-    is         => 'rw',
-    isa        => 'IO::Pty::Easy',
-    lazy_build => 1,
-    init_arg   => undef,
-);
-
-sub _build_pty {
-    IO::Pty::Easy->new(raw => 0);
-}
-
-has _raw_mode => (
-    traits  => ['NoGetopt'],
-    is      => 'rw',
-    isa     => 'Bool',
-    default => 0,
-    trigger => sub {
-        my $self = shift;
-        my ($val) = @_;
-        if ($val) {
-            ReadMode 5;
-        }
-        else {
-            ReadMode 0;
-        }
-    },
-);
-
 has _needs_termsize_update => (
     traits  => ['NoGetopt'],
     is      => 'rw',
@@ -268,46 +231,61 @@ has _needs_termsize_update => (
     default => 0,
 );
 
-sub _build_select_args {
+has _term => (
+    is      => 'ro',
+    isa     => 'Term::Filter',
+    lazy    => 1,
+    default => sub {
+        my $_self = shift;
+        weaken(my $self = $_self);
+        Term::Filter->new(
+            callbacks => {
+                setup => sub {
+                    $self->socket;
+                },
+                winch => sub {
+                    # for the sake of sending a clear to the client anyway
+                    $self->write_to_handle($self->output, "\e[H\e[2J");
+                    $self->_needs_termsize_update(1);
+                },
+                read_error => sub {
+                    my ($event, $eout) = @_;
+                    if (vec($eout, fileno($self->socket), 1)) {
+                        $self->_new_socket;
+                    }
+                },
+                read => sub {
+                    my ($event, $rout) = @_;
+                    if (vec($rout, fileno($self->socket), 1)) {
+                        my $got = $self->read_from_handle(
+                            $self->socket, "socket"
+                        );
+                        $self->_new_socket unless defined $got;
+
+                        if ($self->bell_on_watcher) {
+                            # something better to do here?
+                            $self->write_to_handle($self->output, "\a");
+                        }
+                    }
+                },
+                munge_output => sub {
+                    my ($event, $buf) = @_;
+                    $self->write_to_termcast($buf);
+                    $buf;
+                },
+            },
+        );
+    },
+    handles => [
+        'run',
+        'input', 'output',
+        'read_from_handle', 'write_to_handle',
+    ],
+);
+
+sub BUILD {
     my $self = shift;
-    my @for = @_ ? @_ : (qw(socket pty input));
-    my %for = map { $_ => 1 } @for;
-
-    my ($rin, $win, $ein) = ('', '', '');
-    if ($for{socket}) {
-        my $sockfd = fileno($self->socket);
-        vec($rin, $sockfd, 1) = 1;
-        vec($win, $sockfd, 1) = 1;
-        vec($ein, $sockfd, 1) = 1;
-    }
-    if ($for{pty}) {
-        my $ptyfd  = fileno($self->pty);
-        vec($rin, $ptyfd,  1) = 1;
-    }
-    if ($for{input}) {
-        my $infd   = fileno(STDIN);
-        vec($rin, $infd   ,1) = 1;
-    }
-
-    return ($rin, $win, $ein);
-}
-
-sub _socket_ready {
-    my $self = shift;
-    my ($vec) = @_;
-    vec($vec, fileno($self->socket), 1);
-}
-
-sub _pty_ready {
-    my $self = shift;
-    my ($vec) = @_;
-    vec($vec, fileno($self->pty), 1);
-}
-
-sub _in_ready {
-    my $self = shift;
-    my ($vec) = @_;
-    vec($vec, fileno(STDIN), 1);
+    $self->_term->add_input_handle($self->socket);
 }
 
 =method write_to_termcast $BUF
@@ -320,20 +298,27 @@ sub write_to_termcast {
     my $self = shift;
     my ($buf) = @_;
 
-    my ($rin, $win, $ein) = $self->_build_select_args('socket');
-    my ($rout, $wout, $eout);
-    my $ready = select(undef, $wout = $win, $eout = $ein, $self->timeout);
-    if (!$ready || $self->_socket_ready($eout)) {
-        $self->clear_socket;
-        return $self->write_to_termcast(@_);
+    # XXX do something if $wout isn't set? buffer maybe?
+    # would be nice to avoid the hang until it realizes it's timed out
+    return unless try {
+        my ($wout, $eout) = $self->_term->retry_select(
+            'w', $self->timeout, $self->socket
+        );
+        die "error" if vec($eout, fileno($self->socket), 1);
+        1;
     }
+    catch {
+        $self->clear_socket;
+        $self->write_to_termcast($buf);
+        return;
+    };
 
     if ($self->_needs_termsize_update) {
         $buf = $self->termsize_message . $buf;
         $self->_needs_termsize_update(0);
     }
 
-    $self->socket->syswrite($buf);
+    $self->write_to_handle($self->socket, $buf);
 }
 
 =method run @ARGV
@@ -343,89 +328,6 @@ all output from that command to the termcast server. The command may be an
 interactive program (in fact, this is the most useful case).
 
 =cut
-
-sub run {
-    my $self = shift;
-    my @cmd = @_;
-
-    $self->socket;
-
-    $self->_raw_mode(1);
-    my $guard = Scope::Guard->new(sub { $self->_raw_mode(0) });
-
-    $self->pty->spawn(@cmd) || die "Couldn't spawn @cmd: $!";
-
-    local $SIG{WINCH} = sub {
-        $self->_got_winch(1);
-        $self->pty->slave->clone_winsize_from(\*STDIN);
-
-        $self->pty->kill('WINCH', 1);
-
-        syswrite STDOUT, "\e[H\e[2J"; # for the sake of sending a
-                                      # clear to the client anyway
-
-        $self->_needs_termsize_update(1);
-    };
-
-    while (1) {
-        my ($rin, $win, $ein) = $self->_build_select_args;
-        my ($rout, $wout, $eout);
-        my $select_res = select($rout = $rin, undef, $eout = $ein, undef);
-        my $again = $!{EAGAIN} || $!{EINTR};
-
-        if (($select_res == -1 && $again) || $self->_got_winch) {
-            $self->_got_winch(0);
-            redo;
-        }
-
-        if ($self->_socket_ready($eout)) {
-            $self->_new_socket;
-        }
-
-        if ($self->_in_ready($rout)) {
-            my $buf;
-            sysread STDIN, $buf, 4096;
-            if (!defined $buf || length $buf == 0) {
-                Carp::croak("Error reading from stdin: $!")
-                    unless defined $buf;
-                last;
-            }
-
-            $self->pty->write($buf);
-        }
-
-        if ($self->_pty_ready($rout)) {
-            my $buf = $self->pty->read(0);
-            if (!defined $buf || length $buf == 0) {
-                Carp::croak("Error reading from pty: $!")
-                    unless defined $buf;
-                last;
-            }
-
-            syswrite STDOUT, $buf;
-
-            $self->write_to_termcast($buf);
-        }
-
-        if ($self->_socket_ready($rout)) {
-            my $buf;
-            $self->socket->recv($buf, 4096);
-            if (!defined $buf || length $buf == 0) {
-                if (defined $buf) {
-                    $self->_new_socket;
-                }
-                else {
-                    Carp::croak("Error reading from socket: $!");
-                }
-            }
-
-            if ($self->bell_on_watcher) {
-                # something better to do here?
-                syswrite STDOUT, "\a";
-            }
-        }
-    }
-}
 
 __PACKAGE__->meta->make_immutable;
 no Moose;
