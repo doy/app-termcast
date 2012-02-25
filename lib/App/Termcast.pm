@@ -190,7 +190,7 @@ sub _build_socket {
 
     # ensure the server accepted our connection info
     {
-        my ($rout, $eout) = retry_select('r', undef, $socket);
+        my ($rout, $eout) = retry_select($socket);
 
         if (vec($eout, fileno($socket), 1)) {
             Carp::croak("Invalid password");
@@ -293,7 +293,8 @@ sub write_to_termcast {
     my $socket = $self->socket;
 
     my ($wout, $eout) = retry_select(
-        'w', $self->timeout, $socket
+        { mode => 'w', timeout => $self->timeout },
+        $socket,
     );
 
     if (!vec($wout, fileno($socket), 1) || vec($eout, fileno($socket), 1)) {
