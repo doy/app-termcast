@@ -314,9 +314,9 @@ sub write_to_termcast {
 
 =method run @ARGV
 
-Runs the given command in the local terminal as though via C<exec>, but streams
-all output from that command to the termcast server. The command may be an
-interactive program (in fact, this is the most useful case).
+Runs the given command in the local terminal as though via C<system>, but
+streams all output from that command to the termcast server. The command may be
+an interactive program (in fact, this is the most useful case).
 
 =cut
 
