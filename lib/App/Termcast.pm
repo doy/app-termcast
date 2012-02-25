@@ -189,7 +189,6 @@ sub _build_socket {
     syswrite $socket, $self->establishment_message . $self->termsize_message;
 
     # ensure the server accepted our connection info
-    # can't use _build_select_args, since that would cause recursion
     {
         my ($rout, $eout) = retry_select('r', undef, $socket);
 
@@ -208,7 +207,6 @@ sub _build_socket {
         }
     }
 
-    # XXX Term::Filter should maybe handle this?
     ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
     return $socket;
 }
@@ -216,7 +214,6 @@ sub _build_socket {
 before clear_socket => sub {
     my $self = shift;
     Carp::carp("Lost connection to server ($!), reconnecting...");
-    # XXX Term::Filter should maybe handle this?
     ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
 };
 
