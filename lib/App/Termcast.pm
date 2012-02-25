@@ -179,7 +179,9 @@ sub _build_socket {
                                         PeerPort => $self->port);
         if (!$socket) {
             Carp::carp "Couldn't connect to " . $self->host . ": $!";
+            ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
             sleep 5;
+            ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
             redo;
         }
     }
