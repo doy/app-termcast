@@ -25,7 +25,7 @@ test_tcp(
         $tc->write_to_termcast('foo');
         syswrite($cwrite, 'a');
         { sysread($cread, my $buf, 1) }
-        ok(!$tc->meta->find_attribute_by_name('pty')->has_value($tc),
+        ok(!$tc->meta->find_attribute_by_name('_term')->has_value($tc),
            "pty isn't created");
     },
     server => sub {

@@ -7,6 +7,7 @@ with 'MooseX::Getopt::Dashes';
 use IO::Socket::INET;
 use JSON;
 use Scalar::Util 'weaken';
+use Select::Retry;
 use Term::Filter;
 use Term::ReadKey;
 use Try::Tiny;
@@ -183,21 +184,20 @@ sub _build_socket {
         }
     }
 
-    $self->write_to_handle(
-        $socket, $self->establishment_message . $self->termsize_message
-    );
+    syswrite $socket, $self->establishment_message . $self->termsize_message;
 
     # ensure the server accepted our connection info
     # can't use _build_select_args, since that would cause recursion
     {
-        my ($rout, $eout) = $self->_term->retry_select('r', undef, $socket);
+        my ($rout, $eout) = retry_select('r', undef, $socket);
 
         if (vec($eout, fileno($socket), 1)) {
             Carp::croak("Invalid password");
         }
         elsif (vec($rout, fileno($socket), 1)) {
-            my $buf = $self->read_from_handle($socket, "socket");
-            if (!defined $buf) {
+            my $buf;
+            $socket->recv($buf, 4096);
+            if (!defined $buf || length $buf == 0) {
                 Carp::croak("Invalid password");
             }
             elsif ($buf ne ('hello, ' . $self->user . "\n")) {
@@ -207,7 +207,7 @@ sub _build_socket {
     }
 
     # XXX Term::Filter should maybe handle this?
-    ReadMode 5 if $self->_term->_raw_mode;
+    ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
     return $socket;
 }
 
@@ -215,7 +215,7 @@ before clear_socket => sub {
     my $self = shift;
     Carp::carp("Lost connection to server ($!), reconnecting...");
     # XXX Term::Filter should maybe handle this?
-    ReadMode 0 if $self->_term->_raw_mode;
+    ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
 };
 
 sub _new_socket {
@@ -232,39 +232,41 @@ has _needs_termsize_update => (
 );
 
 has _term => (
-    is      => 'ro',
-    isa     => 'Term::Filter',
-    lazy    => 1,
-    default => sub {
+    is        => 'ro',
+    isa       => 'Term::Filter',
+    lazy      => 1,
+    predicate => '_has_term',
+    default   => sub {
         my $_self = shift;
         weaken(my $self = $_self);
         Term::Filter->new(
             callbacks => {
                 setup => sub {
-                    $self->socket;
+                    my ($term) = @_;
+                    $term->add_input_handle($self->socket);
                 },
                 winch => sub {
                     # for the sake of sending a clear to the client anyway
-                    $self->write_to_handle($self->output, "\e[H\e[2J");
+                    syswrite $self->output, "\e[H\e[2J";
                     $self->_needs_termsize_update(1);
                 },
                 read_error => sub {
-                    my ($event, $eout) = @_;
+                    my ($term, $eout) = @_;
                     if (vec($eout, fileno($self->socket), 1)) {
                         $self->_new_socket;
                     }
                 },
                 read => sub {
-                    my ($event, $rout) = @_;
+                    my ($term, $rout) = @_;
                     if (vec($rout, fileno($self->socket), 1)) {
-                        my $got = $self->read_from_handle(
+                        my $got = $term->_read_from_handle(
                             $self->socket, "socket"
                         );
                         $self->_new_socket unless defined $got;
 
                         if ($self->bell_on_watcher) {
                             # something better to do here?
-                            $self->write_to_handle($self->output, "\a");
+                            syswrite $self->output, "\a";
                         }
                     }
                 },
@@ -276,17 +278,8 @@ has _term => (
             },
         );
     },
-    handles => [
-        'run',
-        'input', 'output',
-        'read_from_handle', 'write_to_handle',
-    ],
+    handles => [ 'run', 'input', 'output' ],
 );
-
-sub BUILD {
-    my $self = shift;
-    $self->_term->add_input_handle($self->socket);
-}
 
 =method write_to_termcast $BUF
 
@@ -298,27 +291,23 @@ sub write_to_termcast {
     my $self = shift;
     my ($buf) = @_;
 
-    # XXX do something if $wout isn't set? buffer maybe?
-    # would be nice to avoid the hang until it realizes it's timed out
-    return unless try {
-        my ($wout, $eout) = $self->_term->retry_select(
-            'w', $self->timeout, $self->socket
-        );
-        die "error" if vec($eout, fileno($self->socket), 1);
-        1;
-    }
-    catch {
+    my $socket = $self->socket;
+
+    my ($wout, $eout) = retry_select(
+        'w', $self->timeout, $socket
+    );
+
+    if (!vec($wout, fileno($socket), 1) || vec($eout, fileno($socket), 1)) {
         $self->clear_socket;
-        $self->write_to_termcast($buf);
-        return;
-    };
+        return $self->write_to_termcast(@_);
+    }
 
     if ($self->_needs_termsize_update) {
         $buf = $self->termsize_message . $buf;
         $self->_needs_termsize_update(0);
     }
 
-    $self->write_to_handle($self->socket, $buf);
+    $self->socket->syswrite($buf);
 }
 
 =method run @ARGV
