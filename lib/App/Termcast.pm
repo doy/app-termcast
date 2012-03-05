@@ -4,10 +4,10 @@ use Moose;
 
 with 'MooseX::Getopt::Dashes';
 
+use IO::Select;
 use IO::Socket::INET;
 use JSON;
 use Scalar::Util 'weaken';
-use Select::Retry;
 use Term::Filter;
 use Term::ReadKey;
 use Try::Tiny;
@@ -190,19 +190,30 @@ sub _build_socket {
 
     # ensure the server accepted our connection info
     {
-        my ($rout, $eout) = retry_select($socket);
+        my $select = IO::Select->new($socket);
+        my ($r, undef, $e) = IO::Select->select(
+            $select, undef, $select,
+        );
 
-        if (vec($eout, fileno($socket), 1)) {
-            Carp::croak("Invalid password");
-        }
-        elsif (vec($rout, fileno($socket), 1)) {
-            my $buf;
-            $socket->recv($buf, 4096);
-            if (!defined $buf || length $buf == 0) {
+        for my $fh (@$e) {
+            if ($fh == $socket) {
+                ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
                 Carp::croak("Invalid password");
             }
-            elsif ($buf ne ('hello, ' . $self->user . "\n")) {
-                Carp::carp("Unknown login response from server: $buf");
+        }
+        for my $fh (@$r) {
+            if ($fh == $socket) {
+                my $buf;
+                $socket->recv($buf, 4096);
+                if (!defined $buf || length $buf == 0) {
+                    ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+                    Carp::croak("Invalid password");
+                }
+                elsif ($buf ne ('hello, ' . $self->user . "\n")) {
+                    ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+                    Carp::carp("Unknown login response from server: $buf");
+                    ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
+                }
             }
         }
     }
@@ -250,14 +261,14 @@ has _term => (
                     $self->_needs_termsize_update(1);
                 },
                 read_error => sub {
-                    my ($term, $eout) = @_;
-                    if (vec($eout, fileno($self->socket), 1)) {
+                    my ($term, $fh) = @_;
+                    if ($fh == $self->socket) {
                         $self->_new_socket;
                     }
                 },
                 read => sub {
-                    my ($term, $rout) = @_;
-                    if (vec($rout, fileno($self->socket), 1)) {
+                    my ($term, $fh) = @_;
+                    if ($fh == $self->socket) {
                         my $got = $term->_read_from_handle(
                             $self->socket, "socket"
                         );
@@ -270,7 +281,7 @@ has _term => (
                     }
                 },
                 munge_output => sub {
-                    my ($event, $buf) = @_;
+                    my ($term, $buf) = @_;
                     $self->write_to_termcast($buf);
                     $buf;
                 },
@@ -291,23 +302,35 @@ sub write_to_termcast {
     my ($buf) = @_;
 
     my $socket = $self->socket;
+    my $select = IO::Select->new($socket);
 
-    my ($wout, $eout) = retry_select(
-        { mode => 'w', timeout => $self->timeout },
-        $socket,
+    my (undef, $w, $e) = IO::Select->select(
+        undef, $select, $select, $self->timeout,
     );
 
-    if (!vec($wout, fileno($socket), 1) || vec($eout, fileno($socket), 1)) {
-        $self->clear_socket;
-        return $self->write_to_termcast(@_);
+    my $err;
+
+    for my $fh (@$e) {
+        if ($fh == $socket) {
+            $err = 1;
+        }
     }
 
-    if ($self->_needs_termsize_update) {
-        $buf = $self->termsize_message . $buf;
-        $self->_needs_termsize_update(0);
+    if (!$err) {
+        for my $fh (@$w) {
+            if ($fh == $socket) {
+                if ($self->_needs_termsize_update) {
+                    $buf = $self->termsize_message . $buf;
+                    $self->_needs_termsize_update(0);
+                }
+
+                return $self->socket->syswrite($buf);
+            }
+        }
     }
 
-    $self->socket->syswrite($buf);
+    $self->clear_socket;
+    return $self->write_to_termcast(@_);
 }
 
 =method run @ARGV
