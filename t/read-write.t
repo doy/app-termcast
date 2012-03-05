@@ -2,8 +2,7 @@
 use strict;
 use warnings;
 use Test::More;
-use Test::Requires 'Test::TCP';
-use IO::Pty::Easy;
+use Test::Requires 'Test::TCP', 'IO::Pty::Easy';
 
 use App::Termcast;
 
