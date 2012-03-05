@@ -179,9 +179,11 @@ sub _build_socket {
                                         PeerPort => $self->port);
         if (!$socket) {
             Carp::carp "Couldn't connect to " . $self->host . ": $!";
-            ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+            ReadMode(0, $self->input)
+                if $self->_has_term && $self->_term->_raw_mode;
             sleep 5;
-            ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
+            ReadMode(5, $self->input)
+                if $self->_has_term && $self->_term->_raw_mode;
             redo;
         }
     }
@@ -197,7 +199,8 @@ sub _build_socket {
 
         for my $fh (@$e) {
             if ($fh == $socket) {
-                ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+                ReadMode(0, $self->input)
+                    if $self->_has_term && $self->_term->_raw_mode;
                 Carp::croak("Invalid password");
             }
         }
@@ -206,26 +209,31 @@ sub _build_socket {
                 my $buf;
                 $socket->recv($buf, 4096);
                 if (!defined $buf || length $buf == 0) {
-                    ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+                    ReadMode(0, $self->input)
+                        if $self->_has_term && $self->_term->_raw_mode;
                     Carp::croak("Invalid password");
                 }
                 elsif ($buf ne ('hello, ' . $self->user . "\n")) {
-                    ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+                    ReadMode(0, $self->input)
+                        if $self->_has_term && $self->_term->_raw_mode;
                     Carp::carp("Unknown login response from server: $buf");
-                    ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
+                    ReadMode(5, $self->input)
+                        if $self->_has_term && $self->_term->_raw_mode;
                 }
             }
         }
     }
 
-    ReadMode 5 if $self->_has_term && $self->_term->_raw_mode;
+    ReadMode(5, $self->input)
+        if $self->_has_term && $self->_term->_raw_mode;
     return $socket;
 }
 
 before clear_socket => sub {
     my $self = shift;
     Carp::carp("Lost connection to server ($!), reconnecting...");
-    ReadMode 0 if $self->_has_term && $self->_term->_raw_mode;
+    ReadMode(0, $self->input)
+        if $self->_has_term && $self->_term->_raw_mode;
 };
 
 sub _new_socket {
