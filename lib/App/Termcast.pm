@@ -8,7 +8,7 @@ use IO::Select;
 use IO::Socket::INET;
 use JSON;
 use Scalar::Util 'weaken';
-use Term::Filter;
+use Term::Filter::Callback;
 use Term::ReadKey;
 use Try::Tiny;
 
@@ -251,13 +251,20 @@ has _needs_termsize_update => (
 
 has _term => (
     is        => 'ro',
-    isa       => 'Term::Filter',
+    does      => 'Term::Filter',
     lazy      => 1,
     predicate => '_has_term',
     default   => sub {
         my $_self = shift;
         weaken(my $self = $_self);
-        Term::Filter->new(
+        # XXX using ::Callback for now because we need to be able to
+        # instantiate App::Termcast objects without initializing the terminal
+        # (in case of just calling write_to_termcast). This should
+        # eventually be deprecated in favor of moving the termcast interaction
+        # code out to an App::Termcast::Writer module or something, and
+        # this module should be a simple wrapper that combines that module
+        # with Term::Filter.
+        Term::Filter::Callback->new(
             callbacks => {
                 setup => sub {
                     my ($term) = @_;
