@@ -9,15 +9,20 @@ use App::Termcast;
 pipe(my $cread, my $swrite);
 pipe(my $sread, my $cwrite);
 
+alarm 60;
+
+my $crlf = "\x0d\x0a";
+
 test_tcp(
     client => sub {
         my $port = shift;
+
         close $swrite;
         close $sread;
+
         { sysread($cread, my $buf, 1) }
-        my $inc = join ':', grep { !ref } @INC;
+
         my $client_script = <<EOF;
-        BEGIN { \@INC = split /:/, '$inc' }
         use App::Termcast;
 
         no warnings 'redefine';
@@ -25,40 +30,35 @@ test_tcp(
         use warnings 'redefine';
 
         my \$tc = App::Termcast->new(
-            host => '127.0.0.1', port => $port,
-            user => 'test', password => 'tset');
-        \$tc->run('$^X', "-e", "while (<>) { last if /\\\\./; print; print qq{---\\n}; }");
+            host     => '127.0.0.1',
+            port     => $port,
+            user     => 'test',
+            password => 'tset',
+        );
+        \$tc->run(\$^X, '-ple', q[last if /^\$/]);
 EOF
         my $pty = IO::Pty::Easy->new;
-        $pty->spawn("$^X", "-e", $client_script);
+        $pty->spawn($^X, (map {; '-I', $_ } @INC), '-e', $client_script);
         syswrite($cwrite, 'a');
         { sysread($cread, my $buf, 1) }
+
         $pty->write("foo\n");
         syswrite($cwrite, 'a');
         { sysread($cread, my $buf, 1) }
-        {
-            local $SIG{ALRM} = sub { fail("got the right thing on stdout") };
-            alarm 10;
-            my $read = '';
-            $read .= $pty->read until $read =~ /---/;
-            alarm 0;
-            is($read, "foo\r\nfoo\r\n---\r\n", 'got the right thing on stdout');
-        }
+
+        is(full_read($pty), "foo${crlf}foo${crlf}");
+
         $pty->write("bar\n");
         syswrite($cwrite, 'a');
         { sysread($cread, my $buf, 1) }
-        {
-            local $SIG{ALRM} = sub { fail("got the right thing on stdout") };
-            alarm 10;
-            my $read = '';
-            $read .= $pty->read until $read =~ /---/;
-            alarm 0;
-            is($read, "bar\r\nbar\r\n---\r\n", 'got the right thing on stdout');
-        }
-        $pty->write(".\n");
+
+        is(full_read($pty), "bar${crlf}bar${crlf}");
+
+        $pty->write("\n");
         syswrite($cwrite, 'a');
         { sysread($cread, my $buf, 1) }
-        is($pty->read, ".\r\n", "didn't get too much data");
+
+        is(full_read($pty), "$crlf");
     },
     server => sub {
         my $port = shift;
@@ -71,27 +71,45 @@ EOF
         syswrite($swrite, 'a');
         my $client = $sock->accept;
         { sysread($sread, my $buf, 1) }
-        my $login;
-        $client->recv($login, 4096);
-        is($login,
+        is(full_read($client),
            "hello test tset\n\e\[H\x00{\"geometry\":[80,24]}\xff\e\[H\e\[2J",
            "got the correct login info");
         $client->send("hello, test\n");
 
         syswrite($swrite, 'a');
-        my $output;
         my $total_out = '';
         while (1) {
             { sysread($sread, my $buf, 1) }
-            $client->recv($output, 4096);
+            my $output = full_read($client);
             last unless defined($output) && length($output);
             $total_out .= $output;
             syswrite($swrite, 'a');
         }
-        is($total_out, "foo\r\nfoo\r\n---\r\nbar\r\nbar\r\n---\r\n.\r\n",
+        is($total_out, "foo${crlf}foo${crlf}bar${crlf}bar${crlf}${crlf}",
            'sent the right data to the server');
         syswrite($swrite, 'a');
+        sleep 1 while $client->connected;
     },
 );
+
+sub full_read {
+    my ($fh) = @_;
+
+    my $select = IO::Select->new($fh);
+    return if $select->has_exception(0.1);
+
+    1 while !$select->can_read(1);
+
+    my $ret;
+    while ($select->can_read(1)) {
+        my $new;
+        sysread($fh, $new, 4096);
+        last unless defined($new) && length($new);
+        $ret .= $new;
+        return $ret if $select->has_exception(0.1);
+    }
+
+    return $ret;
+}
 
 done_testing;
