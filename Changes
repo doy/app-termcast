@@ -1,6 +1,8 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+      - Add some more options to stream_ttyrec
+      - Convert to use Term::Filter
 
 0.10  2011-04-14
       - Better handling of the terminal's raw mode, especially during
