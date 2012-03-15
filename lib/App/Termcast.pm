@@ -232,6 +232,7 @@ sub _build_socket {
 before clear_socket => sub {
     my $self = shift;
     Carp::carp("Lost connection to server ($!), reconnecting...");
+    $self->socket->close;
     ReadMode(0, $self->input)
         if $self->_has_term && $self->_term->_raw_mode;
 };
