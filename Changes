@@ -1,6 +1,8 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+
+0.12  2012-03-15
       - Handle disconnection better (make sure old connections are really
         dropped, stop pegging cpu after reconnect)
 
