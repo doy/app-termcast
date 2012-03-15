@@ -238,8 +238,9 @@ before clear_socket => sub {
 
 sub _new_socket {
     my $self = shift;
+    $self->_term->remove_input_handle($self->socket);
     $self->clear_socket;
-    $self->socket;
+    $self->_term->add_input_handle($self->socket);
 }
 
 has _needs_termsize_update => (
