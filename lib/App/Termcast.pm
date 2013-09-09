@@ -369,9 +369,8 @@ Use L<MooseX::SimpleConfig> to make configuration easier.
 
 No known bugs.
 
-Please report any bugs through RT: email
-C<bug-app-termcast at rt.cpan.org>, or browse to
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=App-Termcast>.
+Please report any bugs to GitHub Issues at
+L<https://github.com/doy/app-termcast/issues>.
 
 =head1 SEE ALSO
 
@@ -387,21 +386,21 @@ You can also look for information at:
 
 =over 4
 
-=item * AnnoCPAN: Annotated CPAN documentation
+=item * MetaCPAN
 
-L<http://annocpan.org/dist/App-Termcast>
+L<https://metacpan.org/release/App-Termcast>
 
-=item * CPAN Ratings
+=item * Github
 
-L<http://cpanratings.perl.org/d/App-Termcast>
+L<https://github.com/doy/app-termcast>
 
 =item * RT: CPAN's request tracker
 
 L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=App-Termcast>
 
-=item * Search CPAN
+=item * CPAN Ratings
 
-L<http://search.cpan.org/dist/App-Termcast>
+L<http://cpanratings.perl.org/d/App-Termcast>
 
 =back
 
