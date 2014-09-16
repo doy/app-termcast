@@ -1,6 +1,8 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+
+0.13  2014-09-16
       - Use a less intrusive (and more easily parsable) escape sequence for
         metadata. I believe terminals should just ignore this if it ends up
         actually getting sent to the terminal instead of stripped out by the
