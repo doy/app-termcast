@@ -167,7 +167,7 @@ sub _form_metadata_string {
 
     my $json = JSON::encode_json(\%data);
 
-    return "\e[H\x00$json\xff\e[H\e[2J";
+    return "\e]499;$json\x07";
 }
 
 sub _build_socket {
