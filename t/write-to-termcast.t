@@ -44,7 +44,7 @@ test_tcp(
         syswrite($swrite, 'a');
         my $client = $sock->accept;
         is(full_read($client),
-           "hello test tset\n\e\[H\x00{\"geometry\":[80,24]}\xff\e\[H\e\[2J",
+           "hello test tset\n\e\]499;{\"geometry\":[80,24]}\x07",
            "got the correct login info");
         $client->send("hello, test\n");
         { sysread($sread, my $buf, 1) }
