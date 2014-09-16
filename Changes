@@ -1,6 +1,10 @@
 Revision history for App-Termcast
 
 {{$NEXT}}
+      - Use a less intrusive (and more easily parsable) escape sequence for
+        metadata. I believe terminals should just ignore this if it ends up
+        actually getting sent to the terminal instead of stripped out by the
+        termcast server, but let me know if this isn't the case.
 
 0.12  2012-03-15
       - Handle disconnection better (make sure old connections are really
